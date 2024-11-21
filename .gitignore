@@ -1,0 +1,7 @@
+Figures/
+environments/
+
+# Ignore files
+.pdf
+.pkl
+.log

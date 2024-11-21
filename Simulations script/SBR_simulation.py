@@ -1,19 +1,19 @@
 ### Semantic Based Regularization ###
-
-import torch 
+import sys
+import os
+from typing import Dict, List, Tuple
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
+import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-
 from torch.utils.data import DataLoader
 
-import modular.samples_setup as cs
+modular_path = os.path.abspath(os.path.join(os.getcwd(), '..'))
+sys.path.append(modular_path)
 from modular import engine
-from modular import extra_functions as ef
+import modular.samples_setup as cs
 from modular import model_builder
-from typing import Dict, List, Tuple
 
 # Define functions 
 def semantic_regularization_loss(logits):
@@ -160,11 +160,11 @@ def train_test_loop_reg(model: torch.nn.Module,
 
 # Define variables and loop 
 
-alphas = [0,0.05,0.1,0.2,0.3,0.4,0.5]
-NREPS = 50
-n_samples = [[800,3000,3200],[3000,1000,5000],[2500]*3,[5000]*3]
-var_errors = [0,0.15,0.15] 
-prop_errors = [0,0.5,1]
+alphas = [0]#[0,0.05,0.1,0.2,0.3,0.4,0.5]
+NREPS = 10 #50
+n_samples = [[50]*3]#[[800,3000,3200],[3000,1000,5000],[2500]*3,[5000]*3]
+var_errors = [0,1]#[0,0.15,0.15] 
+prop_errors = [0,0.5]#[0,0.5,1]
 
 # Keep ce and test accuracy
 accuracy_test = np.zeros((len(var_errors),len(alphas), len(n_samples) ,NREPS))
@@ -173,16 +173,14 @@ ce_test = np.zeros((len(var_errors),len(alphas), len(n_samples) ,NREPS))
 BATCH_SIZE = 50
 EPOCHS = 6
 
-for v in range(len(var_errors)):
-    var = var_errors[v]
+
+for v, var in enumerate(var_errors):
     noise_p = prop_errors[v]
-    for n in range(len(n_samples)):
-        for a in range(len(alphas)):
-            alpha = alphas[a]
+    for n, nsample in enumerate(n_samples):
+        for a, alpha in enumerate(alphas):
             for k in range(NREPS):
-                
                 # 1. Simulate images and labels
-                output = cs.generate_sample(n=n_samples[n], seed=11, 
+                output = cs.generate_sample(n=nsample, seed=11, 
                                             noise_prop = noise_p, var=var,
                                             Nclass=3)
                 images, labels= (output['images'], output['labels'])
@@ -224,4 +222,5 @@ env_vars = {'n_samples' : n_samples,
             'BATCH_SIZE': BATCH_SIZE
             }
 
-joblib.dump(env_vars, './environments/SBR_Nov21.pkl')
+joblib.dump(env_vars, '/home/sofia/Candu_postdoc/InformedML-CV/environments/SBR_Nov21.pkl')
+

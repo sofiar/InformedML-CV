@@ -201,15 +201,18 @@ for v, var in enumerate(var_errors):
                 optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1)
                 loss_fn = nn.CrossEntropyLoss()
                 
-                # 4. Run model 
-                output = train_test_loop_reg(model,train_dataloader,test_dataloader,
-                                    optimizer, loss_fn, EPOCHS,print_b=False,
-                                    alpha = alpha)
+                # 4. Run model
+                output = train_test_loop_reg(model = model,
+                                             train_dataloader = train_dataloader,
+                                             test_dataloader = test_dataloader,
+                                             optimizer = optimizer,
+                                             loss_fn = loss_fn,                                            epochs = EPOCHS, 
+                                             print_b=False,
+                                             alpha = alpha)
                 
-                accuracy_test[v,a,n,k]  = output['test_acc'][EPOCHS-1]  
-                ce_test[v,a,n,k]  = output['test_ce'][EPOCHS-1]  
+                accuracy_test[v,a,n,k]  = output['test_acc'][EPOCHS-1]
+                ce_test[v,a,n,k]  = output['test_ce'][EPOCHS-1]           
 
-            
 # Save variables using joblib 
 
 env_vars = {'n_samples' : n_samples,

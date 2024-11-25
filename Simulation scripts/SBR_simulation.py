@@ -161,12 +161,11 @@ def train_test_loop_reg(model: torch.nn.Module,
 
     return results
 
-
 # Parallelize loop 
 def process_combination(v, var, n, nsample, k, p_errors, alphas):
     noise_p = p_errors[v]
     # 1. Simulate images and labels
-    output = cs.generate_sample(n=nsample,  
+    output = cs.generate_sample(n = nsample,  
                                 noise_prop = noise_p, var=var,
                                 Nclass=3)
     images, labels= (output['images'], output['labels'])
@@ -205,7 +204,7 @@ def process_combination(v, var, n, nsample, k, p_errors, alphas):
 
     # Print message 
     if k % 50 == 0:  
-        print(f"Combination ({v}, {var}, {n}, {nsample}) done!")
+        print(f"Combination ({var}, {nsample}) done!")
    
     return (v, n, k, outputs)
 
@@ -213,7 +212,7 @@ def process_combination(v, var, n, nsample, k, p_errors, alphas):
     
 # Define variables
 
-alphas = [0,0.05,0.1,0.2,0.3]
+alphas = [0,0.1,0.5,1,1.5,3]#[0,0.05,0.1,0.2,0.3]
 NREPS = 50
 n_samples = [[800,3000,3200],[3000,1000,5000],[2500]*3,[5000]*3]
 var_errors = [0,0.15,0.15] 
@@ -259,7 +258,7 @@ env_vars = {'n_samples' : n_samples,
             }
 
 # Save variables using joblib 
-joblib.dump(env_vars, '/u/ruizsuar/InformedML-CV/Environments/SBR_Nov21.pkl')
+joblib.dump(env_vars, '/u/ruizsuar/InformedML-CV/Environments/SBR_Nov25.pkl')
 
 
 # Save the dictionary using pickle

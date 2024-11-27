@@ -154,8 +154,8 @@ def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
 loss_fn = nn.CrossEntropyLoss()
 
 # Batch size and epochs
-BATCH_SIZE = 30
-EPOCHS = 5
+BATCH_SIZE = 50
+EPOCHS = 10
 
 # Initialize arrays to save errors
 accuracy_test_noisy = np.zeros((len(n_samples),len(mu_c),len(noise_prop), 2 ,NREPS))

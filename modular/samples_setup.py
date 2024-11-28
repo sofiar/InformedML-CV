@@ -72,6 +72,7 @@ def generate_sample(noise_prop, seed = 999,size = 28, var = 0.15,
             # noisy_indices_s = np.random.choice(n, n_noisy, replace=False)    
                 
         if(order is not None):
+            np.random.seed(seed)
             if(Nclass==2):
                 n_sq = np.sum(order == 1)
                 n_cr = np.sum(order == 0)
@@ -106,7 +107,7 @@ def generate_sample(noise_prop, seed = 999,size = 28, var = 0.15,
         # Add noise to some of them
         n_noisy_cr = int(n_cr * noise_prop)
         n_noisy_sq = int(n_sq * noise_prop)
-        random.seed(seed)
+        np.random.seed(seed)
         noisy_indices_c = np.random.choice(n_cr, n_noisy_cr, replace=False)
         noisy_indices_s = np.random.choice(n_sq, n_noisy_sq, replace=False)       
               
@@ -124,6 +125,7 @@ def generate_sample(noise_prop, seed = 999,size = 28, var = 0.15,
         all_labels = np.concatenate((circle_labels, square_labels))
         
         if (Nclass==3):
+            np.random.seed(seed)
             n_noisy_tr = int(n_tr * noise_prop)
             noisy_indices_t = np.random.choice(n_tr, n_noisy_tr, replace=False)       
             for i in noisy_indices_t:
@@ -148,6 +150,7 @@ def generate_sample(noise_prop, seed = 999,size = 28, var = 0.15,
         else:    
             # Shuffle the dataset
             indices = np.arange(len(all_images))
+            np.random.seed(seed)
             np.random.shuffle(indices)
             all_images = all_images[indices]
             all_labels = all_labels[indices]
@@ -169,7 +172,7 @@ def generate_sample(noise_prop, seed = 999,size = 28, var = 0.15,
 
 
 
-def generate_dataset(all_images, all_labels, test_size=0.2):
+def generate_dataset(all_images, all_labels, test_size=0.2,seed = 999):
 
     """Generate dataset.
 
@@ -177,6 +180,8 @@ def generate_dataset(all_images, all_labels, test_size=0.2):
         all_images: A array with images generated from `generate_sample`
         all_labels: A array of labels corresponding to the images,
         generated from`generate_sample`
+        seed: seed to perform the simulation. Default = 999.
+
         
     Returns:
         A tuple of TensorDatasets of train and test data sets.
@@ -188,7 +193,7 @@ def generate_dataset(all_images, all_labels, test_size=0.2):
     Y = torch.from_numpy(all_labels).type(torch.long)
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size,
-                                                    random_state=42) 
+                                                    random_state=seed) 
 
     # Add channel at dimension 1 (greyscale)
     X_train = X_train.unsqueeze(1)  

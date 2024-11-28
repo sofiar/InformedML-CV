@@ -10,9 +10,9 @@ How can we integrate external knowledge into our predictive AI models? Is it pos
 
 This repository is organized as follows:
 
-- **Jupyter notebooks**: Contains some simple tutorials.
-- **Simulation scripts**: Contains scripts to run more extensive simulations 
-- **modular**: Contains all python functions  
+- **Jupyter notebooks/**: Contains some simple tutorials.
+- **Simulation scripts/**: Contains scripts to run more extensive simulations 
+- **modular/**: Contains all python functions  
 
 
 

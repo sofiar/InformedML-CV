@@ -171,6 +171,7 @@ def train_test_loop(model: torch.nn.Module,
         if print_b:
             print(
                 f"Epoch: {epoch+1} | "
+                f"test_ce: {test_ce:.5f} | "
                 f"test_acc: {test_acc:.4f}"
             )
 

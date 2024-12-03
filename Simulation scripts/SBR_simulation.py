@@ -223,7 +223,7 @@ accuracy_test = np.zeros((len(var_errors),len(alphas), len(n_samples) ,NREPS))
 ce_test = np.zeros((len(var_errors),len(alphas), len(n_samples) ,NREPS))
 
 BATCH_SIZE = 50
-EPOCHS = 6
+EPOCHS = 10
 
 
 # Parallelize the outermost loop
@@ -260,7 +260,3 @@ env_vars = {'n_samples' : n_samples,
 # Save variables using joblib 
 joblib.dump(env_vars, '/u/ruizsuar/InformedML-CV/Environments/SBR_Nov25.pkl')
 
-
-# Save the dictionary using pickle
-# with open('./environments/SBR_Nov21.pkl', 'wb') as f:
-#     pickle.dump(env_vars, f)

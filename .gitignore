@@ -1,5 +1,9 @@
 Figures/
 Environments/
+Check\ results/
+dist/
+Informedml/
+
 
 # Ignore files
 .pdf

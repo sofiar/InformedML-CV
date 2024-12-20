@@ -1,0 +1,7 @@
+include modular/*
+include models/*
+exclude Jupyter\ notebooks/*
+exclude Simulation\ scripts/*
+exclude infomedml/*
+exclude Enviroments/*
+exclude Check\ results/*

@@ -9,9 +9,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
-modular_path = os.path.abspath(os.path.join(os.getcwd(), '..'))
-sys.path.append(modular_path)
 from modular import engine
 import modular.samples_setup as cs
 from modular import model_builder

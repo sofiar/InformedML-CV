@@ -13,10 +13,6 @@ from torch.utils.data import DataLoader, Subset
 from timeit import default_timer as timer 
 import joblib
 from joblib import Parallel, delayed
-
-modular_path = os.path.abspath(os.path.join(os.getcwd(), '..'))
-sys.path.append(modular_path)
-
 import modular.samples_setup as cs
 from modular import engine
 from modular import extra_functions as ef

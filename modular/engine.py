@@ -130,7 +130,8 @@ def train_test_loop(model: torch.nn.Module,
           optimizer: torch.optim.Optimizer,
           loss_fn: torch.nn.Module,
           epochs: int,
-          print_b: True ) -> Dict[str, List]:   
+          print_b: bool = True,
+          Scheduler: torch.optim.lr_scheduler._LRScheduler = None) -> Dict[str, List]:   
     """ Train test loop by epochs.
 
     Conduct train test loop 
@@ -166,6 +167,12 @@ def train_test_loop(model: torch.nn.Module,
         
         test_loss, test_acc, test_ce = test_step(model=model, dataloader=test_dataloader,
                                         loss_fn=loss_fn)
+        
+        # Adjust learning rate
+        if Scheduler is not None:
+            Scheduler.step()  
+
+        
 
       # Print out what's happening
         if print_b:

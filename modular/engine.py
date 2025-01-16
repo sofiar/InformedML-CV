@@ -1,12 +1,42 @@
 
 """
-Contains functions for training, testing and saving a PyTorch model.
+Contains functions and classes for training, testing and saving a PyTorch model.
 """
 from typing import Dict, List, Tuple
 import torch
 from pathlib import Path
 import numpy as np
 
+# Early stopping class
+class EarlyStopping:
+    def __init__(self, patience=5, delta=0):
+        self.patience = patience
+        self.delta = delta
+        self.best_score = None
+        self.early_stop = False
+        self.counter = 0
+        self.best_model_state = None
+        
+    """ Args: 
+        delta(float) : Minimum change in the monitored quantity to qualify as an improvement.
+        patience(int): Number of epochs to wait before stopping if no improvement.
+        
+     """    
+
+    def __call__(self, val_loss, model):
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+            self.counter = 0
 
 # Calculate accuracy (a classification metric)
 def accuracy_fn(y_true, y_pred):
@@ -122,7 +152,9 @@ def test_step(model: torch.nn.Module,
         test_acc /= len(dataloader)
         test_ce /= len(dataloader)
         
+        
     return test_loss, test_acc, test_ce
+     
      
 def train_test_loop(model: torch.nn.Module, 
           train_dataloader: torch.utils.data.DataLoader, 
@@ -131,7 +163,8 @@ def train_test_loop(model: torch.nn.Module,
           loss_fn: torch.nn.Module,
           epochs: int,
           print_b: bool = True,
-          Scheduler: torch.optim.lr_scheduler._LRScheduler = None) -> Dict[str, List]:   
+          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+          early_stopping: EarlyStopping = None) -> Dict[str, List]:   
     """ Train test loop by epochs.
 
     Conduct train test loop 
@@ -167,6 +200,13 @@ def train_test_loop(model: torch.nn.Module,
         
         test_loss, test_acc, test_ce = test_step(model=model, dataloader=test_dataloader,
                                         loss_fn=loss_fn)
+        
+        if early_stopping is not None:
+            early_stopping(test_loss, model)
+            if early_stopping.early_stop:
+                print("Early stopping")
+                break
+
         
         # Adjust learning rate
         if Scheduler is not None:

@@ -15,7 +15,7 @@ from modular import model_builder
 # Define variables for the simulation
 
 # Number of replications and samples per class
-NREPS = 50
+NREPS = 100
 n_samples = [[3000] * 2, [5000] * 2, [3000,5000]]
 
 # Noise and error variance
@@ -187,5 +187,5 @@ env_vars = {'n_samples' : n_samples,
 }       
         
 # Save variables using joblib 
-joblib.dump(env_vars, '/u/ruizsuar/InformedML-CV/Environments/IF_Nov26.pkl')
+joblib.dump(env_vars, '/u/ruizsuar/InformedMlCv/Environments/IF_Nov26.pkl')
                         

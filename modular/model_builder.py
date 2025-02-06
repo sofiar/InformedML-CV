@@ -14,7 +14,8 @@ class TVGG(nn.Module):
     hidden_units: An integer indicating number of hidden units between layers.
     output_shape: An integer indicating number of output units.
     """
-    def __init__(self, input_shape: int, hidden_units: int, output_shape: int):
+    def __init__(self, input_shape: int, hidden_units: int, output_shape: int,
+                  resolution: int = 28):
         super().__init__()
         self.block_1 = nn.Sequential(
             nn.Conv2d(in_channels=input_shape, 
@@ -41,7 +42,7 @@ class TVGG(nn.Module):
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_features=hidden_units*7*7,  
+            nn.Linear(in_features=hidden_units*int(resolution/4)*int(resolution/4),  
             out_features=output_shape)
         )
    

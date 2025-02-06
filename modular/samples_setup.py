@@ -1,5 +1,5 @@
 """
-Contains functionality for genenrating and seting up samples for 
+Contains functionality for genenrating and setting up samples for 
 image classification data.
 """
 import random

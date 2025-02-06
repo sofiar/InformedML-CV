@@ -37,6 +37,8 @@ class EarlyStopping:
             self.best_score = score
             self.best_model_state = model.state_dict()
             self.counter = 0
+            
+     
 
 # Calculate accuracy (a classification metric)
 def accuracy_fn(y_true, y_pred):
@@ -229,7 +231,8 @@ def train_test_loop(model: torch.nn.Module,
         results["test_loss"].append(test_loss)
         results["test_acc"].append(test_acc)
         results["test_ce"].append(test_ce)
-
+        
+        
     return results
 
 

@@ -63,7 +63,8 @@ def cross_entropy_fn(y_true,y_preds):
 def train_step(model: torch.nn.Module,
                dataloader: torch.utils.data.DataLoader,
                loss_fn: torch.nn.Module,
-               optimizer: torch.optim.Optimizer)-> Tuple[float, float]:
+               optimizer: torch.optim.Optimizer,
+               device: torch.device = None)-> Tuple[float, float]:
     """Trains a PyTorch model for 1 epoch.
 
     Turns a target PyTorch model to training mode and then
@@ -80,10 +81,13 @@ def train_step(model: torch.nn.Module,
         In the form (train_loss, train_accuracy)
     
   """
+    model.to(device)
     model.train()
     train_loss, train_acc, train_ce= 0, 0, 0
 
     for batch, (X, y) in enumerate(dataloader):
+
+        X, y = X.to(device), y.to(device)
         y_pred = model(X)
 
         # Calculate loss (per batch)
@@ -115,7 +119,8 @@ def train_step(model: torch.nn.Module,
 
 def test_step(model: torch.nn.Module,
                dataloader: torch.utils.data.DataLoader, 
-               loss_fn: torch.nn.Module)-> Tuple[float, float]:
+               loss_fn: torch.nn.Module,
+               device: torch.device = device)-> Tuple[float, float]:
    
     """Test a PyTorch model for 1 epoch.
 
@@ -133,10 +138,14 @@ def test_step(model: torch.nn.Module,
     
   """
     test_loss, test_acc, test_ce = 0, 0, 0
+    model.to(device)
     model.eval()
     
     with torch.inference_mode():
         for X, y in dataloader:
+            
+            X, y = X.to(device), y.to(device)
+
             # Forward pass
             test_pred = model(X)
                 
@@ -166,7 +175,9 @@ def train_test_loop(model: torch.nn.Module,
           epochs: int,
           print_b: bool = True,
           Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
-          early_stopping: EarlyStopping = None) -> Dict[str, List]:   
+          early_stopping: EarlyStopping = None,
+          device: torch.device = device
+          ) -> Dict[str, List]:   
     """ Train test loop by epochs.
 
     Conduct train test loop 
@@ -198,10 +209,11 @@ def train_test_loop(model: torch.nn.Module,
         train_loss, train_acc, train_ce = train_step(model=model,
                                            dataloader=train_dataloader,
                                            loss_fn=loss_fn,
-                                           optimizer=optimizer)
+                                           optimizer=optimizer,
+                                           device = device)
         
         test_loss, test_acc, test_ce = test_step(model=model, dataloader=test_dataloader,
-                                        loss_fn=loss_fn)
+                                        loss_fn=loss_fn,device=device)
         
         if early_stopping is not None:
             early_stopping(test_loss, model)

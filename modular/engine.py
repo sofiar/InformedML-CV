@@ -49,15 +49,30 @@ def accuracy_fn(y_true, y_pred):
 
 def cross_entropy_fn(y_true,y_preds):
     """ Defines cross entropy measure """
-    y_true = np.eye(y_preds.shape[1])[y_true]
-    y_pred = np.array(y_preds)
-    # Avoid log(0) by clipping probabilities
-    y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+    
+    device = y_true.device  # Get the device of y_true (CPU or GPU)
+       
+    # One-hot encode y_true directly using PyTorch without needing np.eye
+    y_true = torch.nn.functional.one_hot(y_true, num_classes=y_preds.shape[1]).float().to(device)
+    
+    # Clip predictions to avoid log(0)
+    y_preds = torch.clamp(y_preds, min=torch.finfo(torch.float32).eps, max=1 - torch.finfo(torch.float32).eps)
+
     # Compute cross-entropy for each observation
-    ce = -np.sum(y_true * np.log(y_pred), axis=1)
-    # Return average cross-entropy
-    #return ce/len(ce)
-    return np.mean(ce)
+    ce = -torch.sum(y_true * torch.log(y_preds), dim=1)
+    
+    # Return average cross-entropy loss as a scalar (move back to CPU if using GPU)
+    return ce.mean().item()
+
+    # Numpy cpu version
+    # y_true = np.eye(y_preds.shape[1])[y_true]
+    # y_pred = np.array(y_preds)
+    # # Avoid log(0) by clipping probabilities
+    # y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+    # # Compute cross-entropy for each observation
+    # ce = -np.sum(y_true * np.log(y_pred), axis=1)
+    # # Return average cross-entropy
+    # return np.mean(ce)
 
 
 def train_step(model: torch.nn.Module,
@@ -107,8 +122,10 @@ def train_step(model: torch.nn.Module,
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
         train_acc += (y_pred_class == y).sum().item()/len(y_pred)
         # Calculate Cross entropy
-        train_ce += cross_entropy_fn(y_true=y.detach().numpy(),
-                                     y_preds=y_pred.detach().numpy()) 
+        train_ce += cross_entropy_fn(y_true=y,
+                                     y_preds=y_pred) 
+        # train_ce += cross_entropy_fn(y_true=y.detach().numpy(),
+        #                              y_preds=y_pred.detach().numpy()) 
 
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
@@ -120,7 +137,7 @@ def train_step(model: torch.nn.Module,
 def test_step(model: torch.nn.Module,
                dataloader: torch.utils.data.DataLoader, 
                loss_fn: torch.nn.Module,
-               device: torch.device = device)-> Tuple[float, float]:
+               device: torch.device = None)-> Tuple[float, float]:
    
     """Test a PyTorch model for 1 epoch.
 
@@ -176,7 +193,7 @@ def train_test_loop(model: torch.nn.Module,
           print_b: bool = True,
           Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
           early_stopping: EarlyStopping = None,
-          device: torch.device = device
+          device: torch.device = None
           ) -> Dict[str, List]:   
     """ Train test loop by epochs.
 

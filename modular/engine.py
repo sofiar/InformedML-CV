@@ -288,3 +288,181 @@ def save_model(model:torch.nn.Module,
   # Save the model state_dict()
   print(f"[INFO] Saving model to: {model_save_path}")
   torch.save(obj=model.state_dict(),f=model_save_path)
+  
+## For dealing with Soft Labals
+  
+def soft_cross_entropy(logits, soft_targets):
+    log_probs = F.log_softmax(logits, dim=1)  # Convert logits to log-probabilities
+    loss = -torch.sum(soft_targets * log_probs, dim=1).mean()  # Compute soft cross-entropy
+    return loss
+
+def train_soft_step(model: torch.nn.Module,
+               dataloader: torch.utils.data.DataLoader,
+               optimizer: torch.optim.Optimizer,
+               device: torch.device = None)-> Tuple[float, float]:
+    """Trains a PyTorch model for 1 epoch.
+
+    Turns a target PyTorch model to training mode and then
+    runs through all of the required training steps 
+
+    Args:
+        model: A PyTorch model to be trained.
+        dataloader: A DataLoader instance for the model to be trained on.
+        optimizer: A PyTorch optimizer to help minimize the loss function.
+
+    Returns:
+        A tuple of training loss and training accuracy metrics.
+        In the form (train_loss, train_accuracy)
+    
+  """
+    model.to(device)
+    model.train()
+    train_loss, train_acc= 0, 0
+
+    for batch, (X, soft_label) in enumerate(dataloader):
+        
+        X, soft_label = X.to(device), soft_label.to(device)
+
+        logits = model(X)
+
+        # Calculate loss (per batch)
+        loss = soft_cross_entropy(logits, soft_label)
+        train_loss += loss    # Accumulatively add up the loss per epoch 
+
+        # Optimizer zero grad
+        optimizer.zero_grad()
+
+        # Loss backward
+        loss.backward()
+
+        # Optimizer step
+        optimizer.step()
+        
+        # Get accuracy 
+        probabilities = torch.softmax(logits, dim=1)
+        correct_predictions = (probabilities >= 0.5) * soft_label  # Match high probabilities to soft labels
+ 
+    train_acc = correct_predictions.sum() / soft_label.sum()  
+    train_loss = train_loss / len(dataloader)
+
+    return train_loss, train_acc
+
+def test_soft_step(model: torch.nn.Module,
+               dataloader: torch.utils.data.DataLoader, 
+               device: torch.device = None)-> Tuple[float, float]:
+   
+    """Test a PyTorch model for 1 epoch.
+
+    Turns a target PyTorch model to eval mode and then
+    runs forward pass on the test set
+
+    Args:
+        model: A PyTorch model to be used
+        dataloader: A DataLoader instance for testing the model
+        loss_fn: A PyTorch loss function to minimize.
+
+    Returns:
+        A tuple of test loss and test accuracy metrics.
+        In the form (test_loss, test_accuracy)
+    
+  """
+    test_loss, test_acc = 0, 0
+    model.to(device)
+    model.eval()
+    
+    with torch.inference_mode():
+        for X, soft_label in dataloader:
+            
+            X, soft_label = X.to(device), soft_label.to(device)
+
+            # Forward pass
+            logits_pred = model(X)
+                
+            # Calculate loss 
+            loss = soft_cross_entropy(logits_pred, soft_label)
+            test_loss += loss    # Accumulatively add up the loss per epoch 
+
+            # Get accuracy 
+            probs_pred = torch.softmax(logits_pred, dim=1)
+            correct_predictions = (probs_pred >= 0.5) * soft_label  # Match high probabilities to soft labels
+ 
+        # Divide total test loss by length of test dataloader (per batch)
+        test_acc = correct_predictions.sum() / soft_label.sum()  
+        test_loss = test_loss / len(dataloader)
+            
+    return test_loss, test_acc
+
+
+
+def train_test_soft_loop(model: torch.nn.Module, 
+          train_dataloader: torch.utils.data.DataLoader, 
+          test_dataloader: torch.utils.data.DataLoader, 
+          optimizer: torch.optim.Optimizer,
+          epochs: int,
+          print_b: bool = True,
+          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+          early_stopping: engine.EarlyStopping = None,
+          device: torch.device = None
+          ) -> Dict[str, List]:   
+    """ Train test loop by epochs.
+
+    Conduct train test loop 
+
+    Args:
+        model: A PyTorch model to be used
+        train_dataloader: A DataLoader instance for trainig the model
+        test_dataloader: A DataLoader instance for testinig the model
+        optimizer: A PyTorch optimizer to help minimize the loss function.
+        epochs: Number of epochs to run
+        print_b: Boolean. When True the epochs and the test accuracy is printed. 
+        device: device 
+
+
+    Returns:
+        A list of train loss, train accuracy metrics, test loss,
+        test accuracy metrics.
+        In the form (train_loss, train_accuracy,test_loss, test_accuracy)
+    
+  """
+    results = {"train_loss": [],
+               "train_acc": [],
+               "test_loss": [],
+               "test_acc": []}
+                    
+    for epoch in range(epochs):
+        train_loss, train_acc = train_soft_step(model=model,
+                                           dataloader=train_dataloader,
+                                           optimizer=optimizer,
+                                           device = device)
+        
+        test_loss, test_acc = test_soft_step(model= model, 
+                                             dataloader=test_dataloader,
+                                             device=device)
+        
+        if early_stopping is not None:
+            early_stopping(test_loss, model)
+            if early_stopping.early_stop:
+                print("Early stopping")
+                break
+
+        # Adjust learning rate
+        if Scheduler is not None:
+            Scheduler.step()  
+
+        # Print out what's happening
+        if print_b:
+            print(
+                f"Epoch: {epoch+1} | "
+                f"test_acc: {test_acc:.5f}"
+            )
+
+      # Update results dictionary
+        results["train_loss"].append(train_loss)
+        results["train_acc"].append(train_acc)
+        results["test_loss"].append(test_loss)
+        results["test_acc"].append(test_acc)
+        
+        
+    return results
+
+  

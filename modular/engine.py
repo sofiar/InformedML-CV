@@ -4,6 +4,7 @@ Contains functions and classes for training, testing and saving a PyTorch model.
 """
 from typing import Dict, List, Tuple
 import torch
+import torch.nn.functional as F
 from pathlib import Path
 import numpy as np
 

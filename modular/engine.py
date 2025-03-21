@@ -401,7 +401,7 @@ def train_test_soft_loop(model: torch.nn.Module,
           epochs: int,
           print_b: bool = True,
           Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
-          early_stopping: engine.EarlyStopping = None,
+          early_stopping: EarlyStopping = None,
           device: torch.device = None
           ) -> Dict[str, List]:   
     """ Train test loop by epochs.

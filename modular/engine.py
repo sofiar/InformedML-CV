@@ -467,3 +467,229 @@ def train_test_soft_loop(model: torch.nn.Module,
     return results
 
   
+def train_step_reg(model: torch.nn.Module,
+               dataloader: torch.utils.data.DataLoader,
+               loss_fn: torch.nn.Module,
+               reg_fn,
+               optimizer: torch.optim.Optimizer,
+               alpha: float,
+               device: torch.device = None,
+               coef_lambda = None)-> Tuple[float, float]:
+    
+    """Trains a PyTorch model with hierarchical labels including 
+    a regularization term in the loss fuction for 1 epoch.
+
+    Turns a target PyTorch model to training mode and then
+    runs through all of the required training steps 
+
+    Args:
+        model: A PyTorch model to be trained.
+        dataloader: A DataLoader instance for the model to be trained on.
+        loss_fn: A PyTorch base loss function to minimize.
+        reg_fn: regularized function with inputs, logits_main and logits_sub 
+        optimizer: A PyTorch optimizer to help minimize the loss function.
+        alpha: weight for the regularization term
+        device: Torch device
+
+    Returns:
+        A tuple of training loss and training accuracy metrics.
+        In the form (train_loss, train_accuracy)
+    
+  """
+    model.train()
+    train_loss, train_acc, train_ce= 0, 0, 0
+
+    for batch, (X, y_main, y_sub) in enumerate(dataloader):
+        X, y_main, y_sub = X.to(device), y_main.to(device), y_sub.to(device)
+        y_predmain, y_predsub = model(X)
+
+        # Optimizer zero grad
+        optimizer.zero_grad()
+        
+        # Mask NaN values 
+        valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
+        sub_y_clean = y_sub[valid_sub_mask].long() # remove NaNs
+        y_predsub_clean = y_predsub[valid_sub_mask]
+        y_predmain_clean = y_predmain[valid_sub_mask]
+
+        # Calculate standard loss
+        base_loss = loss_fn(y_predsub_clean, sub_y_clean)
+        # add regularization term
+        sbr_loss = reg_fn(logits_main = y_predmain_clean,
+                          true_sublabels = sub_y_clean,
+                          coef_lambda = coef_lambda)
+        
+        loss = base_loss + alpha * sbr_loss
+        
+        train_loss += loss    # Accumulatively add up the loss per epoch
+        
+        # Loss backward
+        loss.backward()
+
+        # Optimizer step
+        optimizer.step()
+
+       # Calculate and accumulate accuracy metric across all batches
+        y_pred_class = torch.argmax(torch.softmax(y_predsub_clean, dim=1), dim=1)
+        train_acc += (y_pred_class == sub_y_clean).sum().item()/len(y_pred_class)
+
+        # Calculate Cross entropy
+        train_ce += engine.cross_entropy_fn(
+            y_true=sub_y_clean.detach().numpy(),
+            y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_predsub)
+
+    # Adjust metrics to get average loss and accuracy per batch 
+    train_loss = train_loss / len(dataloader)
+    train_acc = train_acc / len(dataloader)
+    train_ce = train_ce/ len(dataloader)
+    return train_loss, train_acc, train_ce
+
+
+def test_step_reg(model: torch.nn.Module,
+               dataloader: torch.utils.data.DataLoader, 
+               loss_fn: torch.nn.Module,
+               reg_fn,
+               alpha: float,
+               device: torch.device = None,
+               coef_lambda = None)-> Tuple[float, float]:
+   
+    """Test a PyTorch model for 1 epoch.
+
+    Turns a target PyTorch model to eval mode and then
+    runs forward pass on the test set
+
+    Args:
+        model: A PyTorch model to be used
+        dataloader: A DataLoader instance for testing the model
+        loss_fn: A PyTorch loss function to minimize.
+        reg_fn: regularized function with inputs, logits_main and logits_sub 
+        alpha: weight for the regularization term.
+        device: Torch device
+
+
+    Returns:
+        A tuple of test loss and test accuracy metrics.
+        In the form (test_loss, test_accuracy)
+    
+  """
+    test_loss, test_acc, test_ce = 0, 0, 0
+    model.to(device)
+    model.eval()
+    
+    with torch.inference_mode():
+        for X, y_main, y_sub in dataloader:
+            X, y_main, y_sub = X.to(device), y_main.to(device), y_sub.to(device)
+
+            # Forward pass
+            test_predmain, test_predsub = model(X)
+                
+            # Mask NaNs
+            valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
+            y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
+            test_predsub_clean = test_predsub[valid_sub_mask]
+            test_predmain_clean = test_predmain[valid_sub_mask]
+
+            # Calculate loss (accumatively)
+            sbr_loss = reg_fn(logits_main = test_predmain_clean,
+                              true_sublabels = y_sub_clean,
+                             coef_lambda = coef_lambda)
+            
+            base_loss = loss_fn(test_predsub_clean, y_sub_clean)
+            
+            loss = base_loss + alpha * sbr_loss
+                              
+            test_loss += loss  
+           
+            # Calculate accuracy over subclasses
+            test_acc += engine.accuracy_fn(y_true=y_sub_clean, y_pred=test_predsub_clean.argmax(dim=1))
+
+            # Calculate Cross entropy
+            test_ce += engine.cross_entropy_fn(y_true=y_sub_clean,y_preds=test_predsub_clean) 
+
+        # Divide total test loss by length of test dataloader (per batch)
+        test_loss /= len(dataloader)
+        test_acc /= len(dataloader)
+        test_ce /= len(dataloader)
+        
+        
+    return test_loss, test_acc, test_ce
+
+def train_test_loop_reg(model: torch.nn.Module, 
+          train_dataloader: torch.utils.data.DataLoader, 
+          test_dataloader: torch.utils.data.DataLoader, 
+          optimizer: torch.optim.Optimizer,
+          loss_fn: torch.nn.Module,
+          reg_fn,
+          epochs: int,
+          print_b: True ,
+          alpha: float,
+          device: torch.device = None,
+          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+          coef_lambda = None) -> Dict[str, List]:   
+    
+    """ Train test loop with regularization term by epochs.
+
+    Conduct train test loop 
+
+    Args:
+        model: A PyTorch model to be used
+        train_dataloader: A DataLoader instance for trainig the model
+        test_dataloader: A DataLoader instance for testinig the model
+        optimizer: A PyTorch optimizer to help minimize the loss function.
+        loss_fn: A PyTorch base loss function to minimize.
+        reg_fn: regularized function with inputs, logits_main and logits_sub 
+        epochs: Number of epochs to run
+        print_b: Boolean. When True the epochs and the test accuracy is printed. 
+
+
+    Returns:
+        A list of train loss, train accuracy metrics, test loss,
+        test accuracy metrics.
+        In the form (train_loss, train_accuracy,test_loss, test_accuracy)
+    
+  """
+    results = {"train_loss": [],
+               "train_acc": [],
+               "train_ce": [],
+               "test_loss": [],
+               "test_acc": [],
+               "test_ce": []}
+                    
+    for epoch in range(epochs):
+        train_loss, train_acc, train_ce = train_step_reg(model=model,
+                                           dataloader=train_dataloader,
+                                           loss_fn = loss_fn,
+                                           reg_fn = reg_fn,
+                                           optimizer = optimizer,
+                                           alpha = alpha,
+                                           device = device,
+                                           coef_lambda= coef_lambda)
+        
+        test_loss, test_acc, test_ce = test_step_reg(model=model, 
+                                                    dataloader=test_dataloader,
+                                                    loss_fn=loss_fn,
+                                                    reg_fn= reg_fn,
+                                                    alpha = alpha,
+                                                    device =device,
+                                                    coef_lambda= coef_lambda)
+        
+      # Adjust learning rate
+        if Scheduler is not None:
+            Scheduler.step()  
+
+      # Print out what's happening
+        if print_b:
+            print(
+                f"Epoch: {epoch+1} | "
+                f"test_acc: {test_acc:.4f}"
+            )
+
+      # Update results dictionary
+        results["train_loss"].append(train_loss)
+        results["train_acc"].append(train_acc)
+        results["train_ce"].append(train_ce)
+        results["test_loss"].append(test_loss)
+        results["test_acc"].append(test_acc)
+        results["test_ce"].append(test_ce)
+
+    return results

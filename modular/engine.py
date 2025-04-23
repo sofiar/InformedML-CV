@@ -507,16 +507,22 @@ def train_step_reg(model: torch.nn.Module,
         optimizer.zero_grad()
         
         # Mask NaN values 
-        valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-        sub_y_clean = y_sub[valid_sub_mask].long() # remove NaNs
-        y_predsub_clean = y_predsub[valid_sub_mask]
-        y_predmain_clean = y_predmain[valid_sub_mask]
+        # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
+        # sub_y_clean = y_sub[valid_sub_mask].long() # remove NaNs
+        # y_predsub_clean = y_predsub[valid_sub_mask]
+        # y_predmain_clean = y_predmain[valid_sub_mask]
 
         # Calculate standard loss
-        base_loss = loss_fn(y_predsub_clean, sub_y_clean)
+        # base_loss = loss_fn(y_predsub_clean, sub_y_clean)
+        # # add regularization term
+        # sbr_loss = reg_fn(logits_main = y_predmain_clean,
+        #                   true_sublabels = sub_y_clean,
+        #                   coef_lambda = coef_lambda)
+        
+        base_loss = loss_fn(y_predsub, y_sub)
         # add regularization term
-        sbr_loss = reg_fn(logits_main = y_predmain_clean,
-                          true_sublabels = sub_y_clean,
+        sbr_loss = reg_fn(logits_main = y_predmain,
+                          true_sublabels = y_sub,
                           coef_lambda = coef_lambda)
         
         loss = base_loss + alpha * sbr_loss
@@ -529,14 +535,23 @@ def train_step_reg(model: torch.nn.Module,
         # Optimizer step
         optimizer.step()
 
-       # Calculate and accumulate accuracy metric across all batches
-        y_pred_class = torch.argmax(torch.softmax(y_predsub_clean, dim=1), dim=1)
-        train_acc += (y_pred_class == sub_y_clean).sum().item()/len(y_pred_class)
+    # Calculate and accumulate accuracy metric across all batches
+        y_pred_class = torch.argmax(torch.softmax(y_predsub, dim=1), dim=1)
+        train_acc += (y_pred_class == y_sub).sum().item()/len(y_pred_class)
 
         # Calculate Cross entropy
         train_ce += cross_entropy_fn(
-            y_true=sub_y_clean.detach().numpy(),
-            y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_predsub)
+            y_true=y_sub,
+            y_preds=y_predsub)
+         
+    #    # Calculate and accumulate accuracy metric across all batches
+    #     y_pred_class = torch.argmax(torch.softmax(y_predsub_clean, dim=1), dim=1)
+    #     train_acc += (y_pred_class == sub_y_clean).sum().item()/len(y_pred_class)
+
+    #     # Calculate Cross entropy
+    #     train_ce += cross_entropy_fn(
+    #         y_true=sub_y_clean.detach().numpy(),
+    #         y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_predsub)
 
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
@@ -583,28 +598,28 @@ def test_step_reg(model: torch.nn.Module,
             # Forward pass
             test_predmain, test_predsub = model(X)
                 
-            # Mask NaNs
-            valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-            y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
-            test_predsub_clean = test_predsub[valid_sub_mask]
-            test_predmain_clean = test_predmain[valid_sub_mask]
+            # # Mask NaNs
+            # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
+            # y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
+            # test_predsub_clean = test_predsub[valid_sub_mask]
+            # test_predmain_clean = test_predmain[valid_sub_mask]
 
             # Calculate loss (accumatively)
-            sbr_loss = reg_fn(logits_main = test_predmain_clean,
-                              true_sublabels = y_sub_clean,
+            sbr_loss = reg_fn(logits_main = test_predmain,
+                              true_sublabels = y_sub,
                              coef_lambda = coef_lambda)
             
-            base_loss = loss_fn(test_predsub_clean, y_sub_clean)
+            base_loss = loss_fn(test_predsub, y_sub)
             
             loss = base_loss + alpha * sbr_loss
                               
             test_loss += loss  
            
             # Calculate accuracy over subclasses
-            test_acc += accuracy_fn(y_true=y_sub_clean, y_pred=test_predsub_clean.argmax(dim=1))
+            test_acc += accuracy_fn(y_true=y_sub, y_pred=test_predsub.argmax(dim=1))
 
             # Calculate Cross entropy
-            test_ce += cross_entropy_fn(y_true=y_sub_clean,y_preds=test_predsub_clean) 
+            test_ce += cross_entropy_fn(y_true=y_sub,y_preds=test_predsub) 
 
         # Divide total test loss by length of test dataloader (per batch)
         test_loss /= len(dataloader)

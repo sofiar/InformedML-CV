@@ -534,7 +534,7 @@ def train_step_reg(model: torch.nn.Module,
         train_acc += (y_pred_class == sub_y_clean).sum().item()/len(y_pred_class)
 
         # Calculate Cross entropy
-        train_ce += engine.cross_entropy_fn(
+        train_ce += cross_entropy_fn(
             y_true=sub_y_clean.detach().numpy(),
             y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_predsub)
 
@@ -601,10 +601,10 @@ def test_step_reg(model: torch.nn.Module,
             test_loss += loss  
            
             # Calculate accuracy over subclasses
-            test_acc += engine.accuracy_fn(y_true=y_sub_clean, y_pred=test_predsub_clean.argmax(dim=1))
+            test_acc += accuracy_fn(y_true=y_sub_clean, y_pred=test_predsub_clean.argmax(dim=1))
 
             # Calculate Cross entropy
-            test_ce += engine.cross_entropy_fn(y_true=y_sub_clean,y_preds=test_predsub_clean) 
+            test_ce += cross_entropy_fn(y_true=y_sub_clean,y_preds=test_predsub_clean) 
 
         # Divide total test loss by length of test dataloader (per batch)
         test_loss /= len(dataloader)

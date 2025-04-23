@@ -53,7 +53,6 @@ def cross_entropy_fn(y_true,y_preds):
     
     device = y_true.device  # Get the device of y_true (CPU or GPU)
        
-    # One-hot encode y_true directly using PyTorch without needing np.eye
     y_true = torch.nn.functional.one_hot(y_true, num_classes=y_preds.shape[1]).float().to(device)
     
     # Clip predictions to avoid log(0)
@@ -496,6 +495,11 @@ def train_step_reg(model: torch.nn.Module,
         In the form (train_loss, train_accuracy)
     
   """
+
+  
+  #############################################################################
+    model.to(device)
+
     model.train()
     train_loss, train_acc, train_ce= 0, 0, 0
 
@@ -503,23 +507,8 @@ def train_step_reg(model: torch.nn.Module,
         X, y_main, y_sub = X.to(device), y_main.to(device), y_sub.to(device)
         y_predmain, y_predsub = model(X)
 
-        # Optimizer zero grad
-        optimizer.zero_grad()
-        
-        # Mask NaN values 
-        # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-        # sub_y_clean = y_sub[valid_sub_mask].long() # remove NaNs
-        # y_predsub_clean = y_predsub[valid_sub_mask]
-        # y_predmain_clean = y_predmain[valid_sub_mask]
-
-        # Calculate standard loss
-        # base_loss = loss_fn(y_predsub_clean, sub_y_clean)
-        # # add regularization term
-        # sbr_loss = reg_fn(logits_main = y_predmain_clean,
-        #                   true_sublabels = sub_y_clean,
-        #                   coef_lambda = coef_lambda)
-        
         base_loss = loss_fn(y_predsub, y_sub)
+        
         # add regularization term
         sbr_loss = reg_fn(logits_main = y_predmain,
                           true_sublabels = y_sub,
@@ -528,31 +517,23 @@ def train_step_reg(model: torch.nn.Module,
         loss = base_loss + alpha * sbr_loss
         
         train_loss += loss    # Accumulatively add up the loss per epoch
-        
+
+        # Optimizer zero grad
+        optimizer.zero_grad()
+                        
         # Loss backward
         loss.backward()
 
         # Optimizer step
         optimizer.step()
 
-    # Calculate and accumulate accuracy metric across all batches
+        # Calculate and accumulate accuracy metric across all batches
         y_pred_class = torch.argmax(torch.softmax(y_predsub, dim=1), dim=1)
         train_acc += (y_pred_class == y_sub).sum().item()/len(y_pred_class)
-
+        
         # Calculate Cross entropy
-        train_ce += cross_entropy_fn(
-            y_true=y_sub,
-            y_preds=y_predsub)
-         
-    #    # Calculate and accumulate accuracy metric across all batches
-    #     y_pred_class = torch.argmax(torch.softmax(y_predsub_clean, dim=1), dim=1)
-    #     train_acc += (y_pred_class == sub_y_clean).sum().item()/len(y_pred_class)
-
-    #     # Calculate Cross entropy
-    #     train_ce += cross_entropy_fn(
-    #         y_true=sub_y_clean.detach().numpy(),
-    #         y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_predsub)
-
+        train_ce += cross_entropy_fn(y_true=y_sub, y_preds=y_predsub)
+            
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
     train_acc = train_acc / len(dataloader)
@@ -617,7 +598,7 @@ def test_step_reg(model: torch.nn.Module,
            
             # Calculate accuracy over subclasses
             test_acc += accuracy_fn(y_true=y_sub, y_pred=test_predsub.argmax(dim=1))
-
+            
             # Calculate Cross entropy
             test_ce += cross_entropy_fn(y_true=y_sub,y_preds=test_predsub) 
 

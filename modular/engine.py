@@ -507,7 +507,7 @@ def train_step_reg(model: torch.nn.Module,
         X, y_main, y_sub = X.to(device), y_main.to(device), y_sub.to(device)
         y_predmain, y_predsub = model(X)
 
-        base_loss = loss_fn(y_predsub, y_sub)
+        base_loss = loss_fn(y_predsub, y_sub) + loss_fn(y_predmain, y_main)
         
         # add regularization term
         sbr_loss = reg_fn(logits_main = y_predmain,
@@ -590,7 +590,7 @@ def test_step_reg(model: torch.nn.Module,
                               true_sublabels = y_sub,
                              coef_lambda = coef_lambda)
             
-            base_loss = loss_fn(test_predsub, y_sub)
+            base_loss = loss_fn(test_predsub, y_sub) + + loss_fn(test_predmain, y_main)
             
             loss = base_loss + alpha * sbr_loss
                               
@@ -666,7 +666,7 @@ def train_test_loop_reg(model: torch.nn.Module,
                                                     loss_fn=loss_fn,
                                                     reg_fn= reg_fn,
                                                     alpha = alpha,
-                                                    device =device,
+                                                    device = device,
                                                     coef_lambda= coef_lambda)
         
       # Adjust learning rate

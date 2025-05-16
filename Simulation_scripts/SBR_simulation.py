@@ -86,8 +86,10 @@ def train_step_reg(model: torch.nn.Module,
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
         train_acc += (y_pred_class == y).sum().item()/len(y_pred)
         # Calculate Cross entropy
-        train_ce += engine.cross_entropy_fn(y_true=y.detach().numpy(),
-                                     y_preds=y_pred.detach().numpy()).sum().item()/len(y_pred)
+        train_ce += engine.cross_entropy_fn(
+            y_true = y.detach().numpy(),
+            y_preds = y_pred.detach().numpy()
+            ).sum().item()/len(y_pred)
 
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
@@ -132,14 +134,19 @@ def train_test_loop_reg(model: torch.nn.Module,
                "test_ce": []}
                     
     for epoch in range(epochs):
-        train_loss, train_acc, train_ce = train_step_reg(model=model,
-                                           dataloader=train_dataloader,
-                                           loss_fn=loss_fn,
-                                           optimizer=optimizer,
-                                           alpha = alpha)
+        train_loss, train_acc, train_ce = train_step_reg(
+            model=model,
+            dataloader=train_dataloader,
+            loss_fn=loss_fn,
+            optimizer=optimizer,
+            alpha = alpha
+            )
         
-        test_loss, test_acc, test_ce = engine.test_step(model=model, dataloader=test_dataloader,
-                                        loss_fn=loss_fn)
+        test_loss, test_acc, test_ce = engine.test_step(
+            model=model, 
+            dataloader=test_dataloader,
+            loss_fn=loss_fn
+            )
 
       # Print out what's happening
         if print_b:
@@ -161,25 +168,34 @@ def train_test_loop_reg(model: torch.nn.Module,
 # Parallelize loop 
 def process_combination(v, var, n, nsample, k, p_errors, alphas):
     noise_p = p_errors[v]
+    
     # 1. Simulate images and labels
-    output = cs.generate_sample(n = nsample,  
-                                noise_prop = noise_p, var=var,
-                                Nclass=3)
+    output = cs.generate_sample(
+        n = nsample,  
+        noise_prop = noise_p, var=var,
+        Nclass=3
+    )
     images, labels= (output['images'], output['labels'])
     
     # 2. Generate dataset
     train_dataset, test_dataset = cs.generate_dataset(images, labels)
-    train_dataloader = DataLoader(train_dataset, 
-                        batch_size= 32, 
-                        shuffle=True)
-    test_dataloader = DataLoader(test_dataset,
-                        batch_size= 32,
-                        shuffle=True )
+    train_dataloader = DataLoader(
+        train_dataset, 
+        batch_size= 32, 
+        shuffle=True
+    )
+    test_dataloader = DataLoader(
+        test_dataset,
+        batch_size= 32,
+        shuffle=True 
+    )
                 
     # 3. Load model
-    model = model_builder.TVGG(input_shape = 1,
-                        hidden_units = 10, 
-                        output_shape = 3)
+    model = model_builder.TVGG(
+        input_shape = 1,
+        hidden_units = 10, 
+        output_shape = 3
+        )
     optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1)
     loss_fn = nn.CrossEntropyLoss()
     
@@ -205,8 +221,6 @@ def process_combination(v, var, n, nsample, k, p_errors, alphas):
    
     return (v, n, k, outputs)
 
-            
-    
 # Define variables
 
 alphas = [0,0.1,0.5,1,1.5,3]#[0,0.05,0.1,0.2,0.3]

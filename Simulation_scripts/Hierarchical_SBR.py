@@ -186,15 +186,23 @@ def generate_hierarchical_dataset(all_images, all_sublabels, all_mainlabels,
     Y_main = torch.from_numpy(all_mainlabels).type(torch.long)
     Y_sub = torch.from_numpy(all_sublabels).type(torch.long)
 
-    X_train, X_test, y_main_train, y_main_test, y_sub_train, y_sub_test = train_test_split(
-        X, Y_main,Y_sub, test_size=test_size, random_state=seed) 
+    (
+     X_train, X_test, y_main_train, 
+     y_main_test, y_sub_train, y_sub_test
+    ) = train_test_split(
+        X, Y_main,Y_sub, test_size = test_size, random_state = seed
+    ) 
 
     # Add channel at dimension 1 (greyscale)
     X_train = X_train.unsqueeze(1)  
     X_test = X_test.unsqueeze(1)
         
-    train_dataset_ = torch.utils.data.TensorDataset(X_train,y_main_train, y_sub_train)
-    test_dataset_ = torch.utils.data.TensorDataset(X_test,y_main_test,y_sub_test)
+    train_dataset_ = torch.utils.data.TensorDataset(
+        X_train,y_main_train, y_sub_train
+    )
+    test_dataset_ = torch.utils.data.TensorDataset(
+        X_test,y_main_test,y_sub_test
+    )
 
     return train_dataset_, test_dataset_
 
@@ -280,17 +288,24 @@ def train_step_reg(model: torch.nn.Module,
         # Optimizer zero grad
         optimizer.zero_grad()
         
-        # Mask NaN values 
-        valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-        y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
-        y_predsub_clean = y_predsub[valid_sub_mask]
-        y_predmain_clean = y_predmain[valid_sub_mask]
+        # # Mask NaN values 
+        # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
+        # y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
+        # y_predsub_clean = y_predsub[valid_sub_mask]
+        # y_predmain_clean = y_predmain[valid_sub_mask]
 
-        # Calculate standard loss
-        base_loss = loss_fun(y_predsub_clean, y_sub_clean)
+        # # Calculate standard loss
+        # base_loss = loss_fun(y_predsub_clean, y_sub_clean)
+        # # add regularization term
+        # sbr_loss = reg_fn(logits_main = y_predmain_clean,
+        #                   true_sublabels = y_sub_clean,
+        #                   coef_lambda = coef_lambda)
+         # Calculate standard loss
+        base_loss = loss_fn(y_predsub, y_sub) +  loss_fn(y_predmain, y_main)
+        
         # add regularization term
-        sbr_loss = reg_fn(logits_main = y_predmain_clean,
-                          true_sublabels = y_sub_clean,
+        sbr_loss = reg_fn(logits_main = y_predmain,
+                          true_sublabels = y_sub,
                           coef_lambda = coef_lambda)
         
         loss = base_loss + alpha * sbr_loss

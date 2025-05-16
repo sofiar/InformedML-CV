@@ -96,7 +96,7 @@ class HierarchicalTVGG(nn.Module):
         
         # Flatten layer before classification
         self.flattern = nn.Flatten()
-        flattern_size = hidden_units * (resolution//4) * (resolution//4)
+        flattern_size = hidden_units * int(resolution/4)*int(resolution/4)
         
         # Output layers: main class and subclass
         self.fc_main = nn.Linear(flattern_size,num_main_clases)

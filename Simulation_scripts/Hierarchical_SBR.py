@@ -578,10 +578,8 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 # 1. Generate sample
-#n_samples = [4000,2000,1000]
-n_samples = [2500,2500,2500]
-#nan_props=[0.1,0.6,0.8]
-nan_props = None
+n_samples = [3000,2000,1000]
+#n_samples = [2500,2500,2500]
 alphas = [0,0.001,0.003,0.005,0.008,0.01]
 
 
@@ -599,7 +597,7 @@ for j in range(NREPS):
         simulated_sample = generate_hierarchical_sample(
                             n = n_samples, noise_prop = NOISE_PROP, 
                             size = RESOLUTION, var = VAR,
-                            noise_indx = False, nan_props = nan_props)
+                            noise_indx = False)
 
         images, sublabels, mainlabels= (simulated_sample['images'], 
                                         simulated_sample['sublabels'],
@@ -709,7 +707,9 @@ env_vars = {'n_samples' : n_samples,
             }
 
 # Save variables using joblib 
+# where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
+#                  'SBR_Hierarchical_cc_balanced.pkl')
 where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
-                 'SBR_Hierarchical_cc_balanced.pkl')
+                 'SBR_Hierarchical_cc.pkl')
 torch.save(env_vars, where_to_save)
     

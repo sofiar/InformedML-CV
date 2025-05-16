@@ -292,9 +292,11 @@ def train_step_reg(model: torch.nn.Module,
         base_loss = loss_fn(y_predsub, y_sub) +  loss_fn(y_predmain, y_main)
         
         # add regularization term
-        sbr_loss = reg_fn(logits_main = y_predmain,
-                          true_sublabels = y_sub,
-                          coef_lambda = coef_lambda)
+        sbr_loss = reg_fn(
+            logits_main = y_predmain,
+            true_sublabels = y_sub,
+            coef_lambda = coef_lambda
+        )
         
         loss = base_loss + alpha * sbr_loss
         
@@ -307,8 +309,8 @@ def train_step_reg(model: torch.nn.Module,
         optimizer.step()
 
        # Calculate and accumulate accuracy metric across all batches
-        y_pred_class = torch.argmax(torch.softmax(y_predsub_clean, dim=1), dim=1)
-        train_acc += (y_pred_class == y_sub_clean).sum().item()/len(y_predsub_clean)
+        y_pred_class = torch.argmax(torch.softmax(y_predsub, dim=1), dim=1)
+        train_acc += (y_pred_class == y_sub).sum().item()/len(y_pred_class)
 
         # Calculate Cross entropy
         train_ce += engine.cross_entropy_fn(y_true=y_sub, y_preds=y_predsub)
@@ -358,9 +360,11 @@ def test_step_reg(model: torch.nn.Module,
             # Forward pass
             test_predmain, test_predsub = model(X)
                       
-            sbr_loss = reg_fn(logits_main = test_predmain,
-                              true_sublabels = y_sub,
-                             coef_lambda = coef_lambda)
+            sbr_loss = reg_fn(
+                logits_main = test_predmain,
+                true_sublabels = y_sub,
+                coef_lambda = coef_lambda
+            )
            
             base_loss = (
                 loss_fn(test_predsub, y_sub) +  loss_fn(test_predmain, y_main)
@@ -371,15 +375,15 @@ def test_step_reg(model: torch.nn.Module,
            
             # Calculate accuracy over subclasses
             test_acc += engine.accuracy_fn(
-                y_true=y_sub_clean, 
-                y_pred=test_predsub_clean.argmax(dim=1)
-                )
+                y_true=y_sub, 
+                y_pred=test_predsub.argmax(dim=1)
+            )
 
             # Calculate Cross entropy
             test_ce += engine.cross_entropy_fn(
-                y_true=y_sub_clean,
-                y_preds=test_predsub_clean
-                ) 
+                y_true = y_sub,
+                y_preds=test_predsub
+            ) 
 
         # Divide total test loss by length of test dataloader (per batch)
         test_loss /= len(dataloader)

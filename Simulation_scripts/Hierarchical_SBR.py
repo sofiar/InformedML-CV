@@ -288,19 +288,7 @@ def train_step_reg(model: torch.nn.Module,
         # Optimizer zero grad
         optimizer.zero_grad()
         
-        # # Mask NaN values 
-        # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-        # y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
-        # y_predsub_clean = y_predsub[valid_sub_mask]
-        # y_predmain_clean = y_predmain[valid_sub_mask]
-
-        # # Calculate standard loss
-        # base_loss = loss_fun(y_predsub_clean, y_sub_clean)
-        # # add regularization term
-        # sbr_loss = reg_fn(logits_main = y_predmain_clean,
-        #                   true_sublabels = y_sub_clean,
-        #                   coef_lambda = coef_lambda)
-         # Calculate standard loss
+        # Calculate standard loss
         base_loss = loss_fn(y_predsub, y_sub) +  loss_fn(y_predmain, y_main)
         
         # add regularization term
@@ -310,7 +298,7 @@ def train_step_reg(model: torch.nn.Module,
         
         loss = base_loss + alpha * sbr_loss
         
-        train_loss += loss    # Accumulatively add up the loss per epoch
+        train_loss += loss    
         
         # Loss backward
         loss.backward()
@@ -323,11 +311,8 @@ def train_step_reg(model: torch.nn.Module,
         train_acc += (y_pred_class == y_sub_clean).sum().item()/len(y_predsub_clean)
 
         # Calculate Cross entropy
-        train_ce += 0
-        # train_ce += engine.cross_entropy_fn(
-        #     #y_true = y_sub_clean.detach().numpy(),
-        #     y_true = y_sub_clean.detach().cpu().numpy(),
-        #     y_preds=y_predsub_clean.detach().numpy()).sum().item()/len(y_sub_clean)
+        train_ce += engine.cross_entropy_fn(y_true=y_sub, y_preds=y_predsub)
+
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
     train_acc = train_acc / len(dataloader)
@@ -372,22 +357,16 @@ def test_step_reg(model: torch.nn.Module,
 
             # Forward pass
             test_predmain, test_predsub = model(X)
-                
-            # Mask NaNs
-            valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-            y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
-            test_predsub_clean = test_predsub[valid_sub_mask]
-            test_predmain_clean = test_predmain[valid_sub_mask]
-
-            # Calculate loss (accumatively)
-            sbr_loss = reg_fn(logits_main = test_predmain_clean,
-                             true_sublabels = y_sub_clean,
+                      
+            sbr_loss = reg_fn(logits_main = test_predmain,
+                              true_sublabels = y_sub,
                              coef_lambda = coef_lambda)
-            
-            base_loss = loss_fun(test_predsub_clean, y_sub_clean)
-            
+           
+            base_loss = (
+                loss_fn(test_predsub, y_sub) +  loss_fn(test_predmain, y_main)
+            )
             loss = base_loss + alpha * sbr_loss
-        
+                              
             test_loss += loss  
            
             # Calculate accuracy over subclasses
@@ -726,5 +705,7 @@ env_vars = {'n_samples' : n_samples,
             }
 
 # Save variables using joblib 
-torch.save(env_vars, '/home/sofiruiz/InformedMlCv/Environments/SBR_Hierarchical_cc_balanced.pkl')
+where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
+                 'SBR_Hierarchical_cc_balanced.pkl')
+torch.save(env_vars, where_to_save)
     

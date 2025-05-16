@@ -600,7 +600,7 @@ for j in range(NREPS):
                             noise_indx = False)
 
         images, sublabels, mainlabels= (simulated_sample['images'], 
-                                        simulated_sample['sublabels'],
+                                        simulated_samb  ple['sublabels'],
                                         simulated_sample['mainlabels'])
         
         # 2. Generate dateset

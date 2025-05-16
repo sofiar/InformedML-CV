@@ -590,7 +590,7 @@ def test_step_reg(model: torch.nn.Module,
                               true_sublabels = y_sub,
                              coef_lambda = coef_lambda)
             
-            base_loss = loss_fn(test_predsub, y_sub) + + loss_fn(test_predmain, y_main)
+            base_loss = loss_fn(test_predsub, y_sub) + loss_fn(test_predmain, y_main)
             
             loss = base_loss + alpha * sbr_loss
                               

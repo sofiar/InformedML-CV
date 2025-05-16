@@ -1,15 +1,19 @@
 Figures/
 Environments/
-Check\ results/
+Check_results/
 dist/
+build/
 informedml/
 models/
 bashs/
+modular/__pycache__/
+*.egg-info/
 
 
 # Ignore files
 .pdf
 .pkl
 .log
+.pyc
 
 Jupyter\ notebooks/04_SBR.ipynb

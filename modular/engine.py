@@ -53,10 +53,16 @@ def cross_entropy_fn(y_true,y_preds):
     
     device = y_true.device  # Get the device of y_true (CPU or GPU)
        
-    y_true = torch.nn.functional.one_hot(y_true, num_classes=y_preds.shape[1]).float().to(device)
+    y_true = torch.nn.functional.one_hot(
+        y_true, num_classes = y_preds.shape[1]
+        ).float().to(device)
     
     # Clip predictions to avoid log(0)
-    y_preds = torch.clamp(y_preds, min=torch.finfo(torch.float32).eps, max=1 - torch.finfo(torch.float32).eps)
+    y_preds = torch.clamp(
+        y_preds, 
+        min = torch.finfo(torch.float32).eps, 
+        max=1 - torch.finfo(torch.float32).eps
+    )
 
     # Compute cross-entropy for each observation
     ce = -torch.sum(y_true * torch.log(y_preds), dim=1)
@@ -124,6 +130,7 @@ def train_step(model: torch.nn.Module,
         # Calculate Cross entropy
         train_ce += cross_entropy_fn(y_true=y,
                                      y_preds=y_pred) 
+        
         # train_ce += cross_entropy_fn(y_true=y.detach().numpy(),
         #                              y_preds=y_pred.detach().numpy()) 
 
@@ -242,9 +249,7 @@ def train_test_loop(model: torch.nn.Module,
         # Adjust learning rate
         if Scheduler is not None:
             Scheduler.step()  
-
-        
-
+       
       # Print out what's happening
         if print_b:
             print(
@@ -282,7 +287,7 @@ def save_model(model:torch.nn.Module,
                         exist_ok=True)
 
   # Create model save path
-  assert model_name.endswith(".pth") or model_name.endswith(".pt"), "model_name should end with '.pt' or '.pth'"
+  assert model_name.endswith(".pth") or model_name.endswith(".pt") 
   model_save_path = target_dir_path / model_name
 
   # Save the model state_dict()
@@ -292,8 +297,10 @@ def save_model(model:torch.nn.Module,
 ## For dealing with Soft Labals
   
 def soft_cross_entropy(logits, soft_targets):
-    log_probs = F.log_softmax(logits, dim=1)  # Convert logits to log-probabilities
-    loss = -torch.sum(soft_targets * log_probs, dim=1).mean()  # Compute soft cross-entropy
+     # Convert logits to log-probabilities
+    log_probs = F.log_softmax(logits, dim=1) 
+    # Compute soft cross-entropy
+    loss = -torch.sum(soft_targets * log_probs, dim=1).mean()  
     return loss
 
 def train_soft_step(model: torch.nn.Module,
@@ -322,7 +329,6 @@ def train_soft_step(model: torch.nn.Module,
     for batch, (X, soft_label) in enumerate(dataloader):
         
         X, soft_label = X.to(device), soft_label.to(device)
-
         logits = model(X)
 
         # Calculate loss (per batch)
@@ -372,7 +378,6 @@ def test_soft_step(model: torch.nn.Module,
     
     with torch.inference_mode():
         for X, soft_label in dataloader:
-            
             X, soft_label = X.to(device), soft_label.to(device)
 
             # Forward pass
@@ -380,18 +385,18 @@ def test_soft_step(model: torch.nn.Module,
                 
             # Calculate loss 
             loss = soft_cross_entropy(logits_pred, soft_label)
-            test_loss += loss    # Accumulatively add up the loss per epoch 
+            test_loss += loss  
 
             # Get accuracy 
             probs_pred = torch.softmax(logits_pred, dim=1)
-            correct_predictions = (probs_pred >= 0.5) * soft_label  # Match high probabilities to soft labels
+             # Match high probabilities to soft labels
+            correct_predictions = (probs_pred >= 0.5) * soft_label 
  
         # Divide total test loss by length of test dataloader (per batch)
         test_acc = correct_predictions.sum() / soft_label.sum()  
         test_loss = test_loss / len(dataloader)
             
     return test_loss, test_acc
-
 
 
 def train_test_soft_loop(model: torch.nn.Module, 
@@ -510,9 +515,11 @@ def train_step_reg(model: torch.nn.Module,
         base_loss = loss_fn(y_predsub, y_sub) + loss_fn(y_predmain, y_main)
         
         # add regularization term
-        sbr_loss = reg_fn(logits_main = y_predmain,
-                          true_sublabels = y_sub,
-                          coef_lambda = coef_lambda)
+        sbr_loss = reg_fn(
+            logits_main = y_predmain,
+            true_sublabels = y_sub,
+            coef_lambda = coef_lambda
+        )
         
         loss = base_loss + alpha * sbr_loss
         
@@ -532,7 +539,7 @@ def train_step_reg(model: torch.nn.Module,
         train_acc += (y_pred_class == y_sub).sum().item()/len(y_pred_class)
         
         # Calculate Cross entropy
-        train_ce += cross_entropy_fn(y_true=y_sub, y_preds=y_predsub)
+        train_ce += cross_entropy_fn(y_true = y_sub, y_preds = y_predsub)
             
     # Adjust metrics to get average loss and accuracy per batch 
     train_loss = train_loss / len(dataloader)
@@ -579,16 +586,12 @@ def test_step_reg(model: torch.nn.Module,
             # Forward pass
             test_predmain, test_predsub = model(X)
                 
-            # # Mask NaNs
-            # valid_sub_mask = ~torch.isnan(y_sub) & (y_sub != -9223372036854775808)
-            # y_sub_clean = y_sub[valid_sub_mask].long() # remove NaNs
-            # test_predsub_clean = test_predsub[valid_sub_mask]
-            # test_predmain_clean = test_predmain[valid_sub_mask]
-
             # Calculate loss (accumatively)
-            sbr_loss = reg_fn(logits_main = test_predmain,
-                              true_sublabels = y_sub,
-                             coef_lambda = coef_lambda)
+            sbr_loss = reg_fn(
+                logits_main = test_predmain,
+                true_sublabels = y_sub,
+                coef_lambda = coef_lambda
+            )
             
             base_loss = loss_fn(test_predsub, y_sub) + loss_fn(test_predmain, y_main)
             
@@ -597,10 +600,13 @@ def test_step_reg(model: torch.nn.Module,
             test_loss += loss  
            
             # Calculate accuracy over subclasses
-            test_acc += accuracy_fn(y_true=y_sub, y_pred=test_predsub.argmax(dim=1))
+            test_acc += accuracy_fn(
+                y_true = y_sub, 
+                y_pred = test_predsub.argmax(dim=1)
+            )
             
             # Calculate Cross entropy
-            test_ce += cross_entropy_fn(y_true=y_sub,y_preds=test_predsub) 
+            test_ce += cross_entropy_fn(y_true = y_sub,y_preds = test_predsub) 
 
         # Divide total test loss by length of test dataloader (per batch)
         test_loss /= len(dataloader)
@@ -652,22 +658,26 @@ def train_test_loop_reg(model: torch.nn.Module,
                "test_ce": []}
                     
     for epoch in range(epochs):
-        train_loss, train_acc, train_ce = train_step_reg(model=model,
-                                           dataloader=train_dataloader,
-                                           loss_fn = loss_fn,
-                                           reg_fn = reg_fn,
-                                           optimizer = optimizer,
-                                           alpha = alpha,
-                                           device = device,
-                                           coef_lambda= coef_lambda)
+        train_loss, train_acc, train_ce = train_step_reg(
+            model=model,
+            dataloader=train_dataloader,
+            loss_fn = loss_fn,
+            reg_fn = reg_fn,
+            optimizer = optimizer,
+            alpha = alpha,
+            device = device,
+            coef_lambda= coef_lambda
+        )
         
-        test_loss, test_acc, test_ce = test_step_reg(model=model, 
-                                                    dataloader=test_dataloader,
-                                                    loss_fn=loss_fn,
-                                                    reg_fn= reg_fn,
-                                                    alpha = alpha,
-                                                    device = device,
-                                                    coef_lambda= coef_lambda)
+        test_loss, test_acc, test_ce = test_step_reg(
+            model=model, 
+            dataloader=test_dataloader,
+            loss_fn=loss_fn,
+            reg_fn= reg_fn,
+            alpha = alpha,
+            device = device,
+            coef_lambda= coef_lambda
+        )
         
       # Adjust learning rate
         if Scheduler is not None:

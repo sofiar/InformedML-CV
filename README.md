@@ -8,19 +8,16 @@ In those cases, it is possible to improve the models by additionally incorporati
 
 How can we integrate external knowledge into our predictive AI models? Is it possible to merge information from multiple sources? In this exploration, we will address these questions with a focus on image classification. Using simulations and toy examples, we'll demonstrate how to implement various techniques for incorporating external knowledge into AI models.
 
+
+## 📂Contents
 This repository is organized as follows:
 
-- **Jupyter notebooks/**: Contains some simple tutorials.
-- **Simulation scripts/**: Contains scripts to run more extensive simulations 
-- **modular/**: Contains all python functions  
+- ↪️**Jupyter notebooks**: Contains some simple tutorials.
+- ↪️**Simulation scripts**: Contains scripts to run more extensive simulations 
+- ↪️**modular**: Contains all python functions  
 
 
-
-
-
-
-### References
-
+## 📚 References
 1. **T. Dash, S. Chitlangia, A. Ahuja, and A. Srinivasan** (2022). *A review of some techniques for inclusion of domain-knowledge into deep neural networks*. Scientific Reports, 12(1):1040
 
 2. **L. von Rueden.** (2023) *Informed Machine Learning: Integrating Prior Knowledge into Data-Driven Learning Systems* . PhD thesis

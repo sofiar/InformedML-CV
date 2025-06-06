@@ -22,8 +22,7 @@ from modular import extra_functions as ef
 ################################################################################
 
 def generate_hierarchical_sample(n , noise_prop,seed = 999, size = 28, 
-                                 var = 0.15, noise_indx = False, 
-                                 nan_props = None):
+                                 var = 0.15, noise_indx = False):
         
     """Generates hierarchical samples.
 
@@ -44,9 +43,7 @@ def generate_hierarchical_sample(n , noise_prop,seed = 999, size = 28,
         and (images, sub_labels,main_lables, noisy index) if noise_indx =True
     
   """
-    if nan_props is None:
-        nan_props = [0,0,0]
-
+  
     dataset_circles = []
     dataset_squares = []
     dataset_triangles = []
@@ -96,35 +93,7 @@ def generate_hierarchical_sample(n , noise_prop,seed = 999, size = 28,
     circle_labels = np.full(n_cr, 0)
     square_labels = np.full(n_sq, 1)
     traingle_labels = np.full(n_tr, 2)
-   
-    ### Add proportion of nan
-    n_nan_cr = int(nan_props[0] * n_cr)
-    n_nan_sq = int(nan_props[1] * n_sq)
-    n_nan_tr = int(nan_props[2] * n_tr)
-
-    # Get random indices
-    indices_nan_cr = np.unravel_index(
-        np.random.choice(circle_labels.size, n_nan_cr, replace=False),
-        circle_labels.shape
-    )
-    indices_nan_sq = np.unravel_index(
-        np.random.choice(square_labels.size, n_nan_sq, replace=False),
-        square_labels.shape
-    )
-    indices_nan_tr = np.unravel_index(
-        np.random.choice(traingle_labels.size, n_nan_tr, replace=False),
-        traingle_labels.shape
-    )
- 
-    # Set those positions to np.nan
-    circle_labels = circle_labels.astype(float)
-    square_labels = square_labels.astype(float)
-    traingle_labels = traingle_labels.astype(float)
- 
-    circle_labels[indices_nan_cr[0]] = np.nan
-    square_labels[indices_nan_sq[0]] = np.nan
-    traingle_labels[indices_nan_tr[0]] = np.nan
-     
+        
     curved_labels = np.full(n_cr , 0)
     polygon_labels = np.full(n_sq + n_tr, 1)
     
@@ -561,11 +530,11 @@ print('Running')
 
 SEED = 1222
 BATCH_SIZE = 50
-RESOLUTION = 60
+RESOLUTION = 50
 EPOCHS = 40
 NREPS = 30 
 NOISE_PROP = 0.8
-VAR = 0.15
+VAR = 0.5
 NJOBS = 1
 my_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -600,7 +569,7 @@ for j in range(NREPS):
                             noise_indx = False)
 
         images, sublabels, mainlabels= (simulated_sample['images'], 
-                                        simulated_samb  ple['sublabels'],
+                                        simulated_sample['sublabels'],
                                         simulated_sample['mainlabels'])
         
         # 2. Generate dateset
@@ -698,7 +667,6 @@ env_vars = {'n_samples' : n_samples,
             'pred_probs': probs_list,
             'predicted_labels': preds_list,
             'nrep_list': nrep_list,
-            'nan_props':nan_props,
             'NREPS': NREPS,
             'EPOCHS': EPOCHS,
             'BATCH_SIZE': BATCH_SIZE,
@@ -712,4 +680,5 @@ env_vars = {'n_samples' : n_samples,
 where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
                  'SBR_Hierarchical_cc.pkl')
 torch.save(env_vars, where_to_save)
-    
+
+print('done!')

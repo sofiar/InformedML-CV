@@ -547,8 +547,8 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 # 1. Generate sample
-n_samples = [3000,2000,1000]
-#n_samples = [2500,2500,2500]
+#n_samples = [3000,2000,1000]
+n_samples = [2500,2500,2500]
 alphas = [0,0.001,0.003,0.005,0.008,0.01]
 
 
@@ -675,10 +675,10 @@ env_vars = {'n_samples' : n_samples,
             }
 
 # Save variables using joblib 
-# where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
-#                  'SBR_Hierarchical_cc_balanced.pkl')
 where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
-                 'SBR_Hierarchical_cc.pkl')
+                 'SBR_Hierarchical_cc_balanced.pkl')
+# where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
+#                  'SBR_Hierarchical_cc.pkl')
 torch.save(env_vars, where_to_save)
 
 print('done!')

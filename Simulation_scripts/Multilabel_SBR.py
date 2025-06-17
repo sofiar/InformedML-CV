@@ -183,20 +183,24 @@ def reg_loss(y_hat, coef_lambda=None):
 
 def train_val_loop(EPOCHS,model,train_dataloader,
                    val_dataloader, device,
-                   optimizer,reg_fn,alpha,coef_lambda = [1,1,1]):
+                   optimizer,reg_fn,alpha,coef_lambda = [1,1,1],
+                   verbose = False):
     
     """Trains and validates a PyTorch model including regularization function.
 
     Args:
-        EPOCHS: number of epochs to run
+        EPOCHS: int. number of epochs to run
         model: A PyTorch model to be trained.
         train_dataloader: A DataLoader instance for the model to be trained on.
         val_dataloader: A DataLoader instance for the model to be validated on.
         device: torch.device
         optimizer: A PyTorch optimizer to help minimize the loss function.
-        reg_fn: regularization function
-        alpha: alpha coefficient for the regularization term
- 
+        reg_fn: callable.  The regularization function applied to the model
+        alpha: float. Weightening factor for the regularization term
+        coef_lambda: list of floats, default = [1,1,1]. Coefficients controlling 
+        the weight for each constrain violation. 
+        verbose: bool. If true prints the training and validation loss per epoch
+         
     Returns:
         training loss and validation loss.
         In the form (training_loss, validation_loss)
@@ -236,14 +240,15 @@ def train_val_loop(EPOCHS,model,train_dataloader,
                 val_losses.append(loss.item())
         epoch_val_loss.append(np.mean(val_losses))
         
-        # if epoch%10==0:
+        if verbose:
+            if epoch%10==0:
 
-        #     print(
-        #         'Train Epoch: {}\t Train Loss: {:.6f}\t Val Loss: {:.6f}'.format(
-        #             epoch+1,
-        #             np.mean(train_losses),
-        #             np.mean(val_losses))               
-        #         )      
+                print(
+                    'Train Epoch: {}\t Train Loss: {:.6f}\t Val Loss: {:.6f}'.format(
+                        epoch+1,
+                        np.mean(train_losses),
+                        np.mean(val_losses))               
+                    )      
             
     return(epoch_train_loss,epoch_val_loss)      
 
@@ -430,15 +435,13 @@ for ns_indx, n_sample in enumerate(nsamples):
             # Save metrics     
             accuracy_list.append(accuray_metric(all_probs, all_true_labels))
             recall_list.append(recall_score(all_probs, all_true_labels))
-            precision_list.append(precision_score(all_probs, all_true_labels))#.numpy())
-            f1_list.append(f1_score(all_probs, all_true_labels))#.numpy())
+            precision_list.append(precision_score(all_probs, all_true_labels))
+            f1_list.append(f1_score(all_probs, all_true_labels))
             alphas_list.append(a_val)
             nrep_list.append(a_indx)
             n_samples_list.append(ns_indx)
             
             # Save number of contradictions  
-            # pred_numpy = torch.stack(pred_labels).cpu().numpy()
-            # real_numpy = torch.stack(real_labels).cpu().numpy()
             pred_numpy = torch.cat(pred_labels, dim=0).cpu().numpy()
             real_numpy = torch.cat(real_labels,dim=0).cpu().numpy()
             pol_circ.append(

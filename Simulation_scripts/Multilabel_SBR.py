@@ -332,9 +332,9 @@ torch.backends.cudnn.benchmark = False
 
 # Generate sample
 nsamples = [[1000] * 3,
-                 [500, 1000, 1500],
-                 [2500] * 3,
-                 [500,1500,2000]]
+           [500, 1000, 1500],
+           [2500] * 3,
+           [500,1500,2000]]
 alphas = [0,0.05,0.07,0.1,0.15]
 
 # Start empty lists to save results 
@@ -432,7 +432,7 @@ for ns_indx, n_sample in enumerate(nsamples):
             all_true_labels = torch.cat(real_labels, dim=0)
             all_pred_labels = torch.cat(pred_labels, dim=0)
 
-            # Save metrics     
+            # 8. Save metrics     
             accuracy_list.append(accuray_metric(all_probs, all_true_labels))
             recall_list.append(recall_score(all_probs, all_true_labels))
             precision_list.append(precision_score(all_probs, all_true_labels))
@@ -441,7 +441,7 @@ for ns_indx, n_sample in enumerate(nsamples):
             nrep_list.append(a_indx)
             n_samples_list.append(ns_indx)
             
-            # Save number of contradictions  
+            # 9. Save number of contradictions  
             pred_numpy = torch.cat(pred_labels, dim=0).cpu().numpy()
             real_numpy = torch.cat(real_labels,dim=0).cpu().numpy()
             pol_circ.append(

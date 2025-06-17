@@ -11,52 +11,11 @@ from modular import engine
 from modular import extra_functions as ef
 from modular import model_builder
 
+################################################################################
+############################# functions definitions ############################
+################################################################################
 
-# Define variables for the simulation
-
-# Number of replications and samples per class
-NREPS = 100
-n_samples = [[3000] * 2, [5000] * 2, [3000,5000]]
-
-# Noise and error variance
-noise_prop = [0,0.25,0.5,0.75,1]
-var_error =.15
-
-# Parameters for extra feature
-mu_c = np.array([-2,-1,-0.5,0])
-mu_s = np.array([2,1,0.5,0])
-sigma_s, sigma_c = 0.5, 0.5
-
-# Define extra feature 
-size_c = [
-    np.zeros((len(mu_c), NREPS, n_samples[i][0]))
-    for i in range(len(n_samples))
-   ]
-
-size_s = [
-    np.zeros((len(mu_c), NREPS, n_samples[i][1]))
-    for i in range(len(n_samples))
-   ]
-
-# Simulate extra feature
-for n, n_sample in enumerate(n_samples):
-    for k in range(NREPS):
-        for i in range(len(mu_c)):
-            size_c[n][i,k,] = np.random.normal(mu_c[i], sigma_c, n_sample[0])
-            size_s[n][i,k,] = np.random.normal(mu_s[i], sigma_s, n_sample[1])
-
-input_shapes = [2, 1]
-
-# Simulate images 
-data_noisy = [[[] for _ in range(len(n_samples))] for _ in range(len(noise_prop))]
-for n, n_sample in enumerate(n_samples):
-    for j, noise in enumerate(noise_prop):
-        for k in range(NREPS):
-            output = cs.generate_sample(n=n_sample, noise_prop=noise,var=var_error)
-            data_noisy[j][n].append(output)
-            
-
-# Function to loop 
+# function to loop over
 def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
     # Get data
     output = data[n][k]
@@ -145,7 +104,53 @@ def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
 
     return (n, k, m,outputs)
 
+################################################################################
+########################### perform simulatinons ###############################
+################################################################################
 
+# Define variables for the simulation
+
+# Number of replications and samples per class
+NREPS = 100
+n_samples = [[3000] * 2, [5000] * 2, [3000,5000]]
+
+# Noise and error variance
+noise_prop = [0,0.25,0.5,0.75,1]
+var_error =.15
+
+# Parameters for extra feature
+mu_c = np.array([-2,-1,-0.5,0])
+mu_s = np.array([2,1,0.5,0])
+sigma_s, sigma_c = 0.5, 0.5
+
+# Define extra feature 
+size_c = [
+    np.zeros((len(mu_c), NREPS, n_samples[i][0]))
+    for i in range(len(n_samples))
+   ]
+
+size_s = [
+    np.zeros((len(mu_c), NREPS, n_samples[i][1]))
+    for i in range(len(n_samples))
+   ]
+
+# Simulate extra feature
+for n, n_sample in enumerate(n_samples):
+    for k in range(NREPS):
+        for i in range(len(mu_c)):
+            size_c[n][i,k,] = np.random.normal(mu_c[i], sigma_c, n_sample[0])
+            size_s[n][i,k,] = np.random.normal(mu_s[i], sigma_s, n_sample[1])
+
+input_shapes = [2, 1]
+
+# Simulate images 
+data_noisy = [[[] for _ in range(len(n_samples))] for _ in range(len(noise_prop))]
+for n, n_sample in enumerate(n_samples):
+    for j, noise in enumerate(noise_prop):
+        for k in range(NREPS):
+            output = cs.generate_sample(n=n_sample, noise_prop=noise,var=var_error)
+            data_noisy[j][n].append(output)
+            
 # Define Loss Function
 loss_fn = nn.CrossEntropyLoss()
 
@@ -168,8 +173,7 @@ outputs_noisy = Parallel(n_jobs=100)(delayed(process_combination)(n, nsample, k,
 for n, k, m, results in outputs_noisy:
     for i, j, acc, ce in results:
         accuracy_test_noisy[n,i,m,j,k]  = acc
-        ce_test_noisy[n,i,m,j,k]  = ce
-        
+        ce_test_noisy[n,i,m,j,k]  = ce        
 
 # Save environment
 env_vars = {'n_samples' : n_samples,

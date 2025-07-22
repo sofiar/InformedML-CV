@@ -1,5 +1,3 @@
-import os
-import sys
 import torch 
 import numpy as np 
 import torch.nn as nn
@@ -8,18 +6,18 @@ import joblib
 from joblib import Parallel, delayed
 import modular.samples_setup as cs
 from modular import engine
-from modular import extra_functions as ef
 from modular import model_builder
 
+
 ################################################################################
-############################# functions definitions ############################
+#                          Functions definitions                               #
 ################################################################################
 
 # function to loop over
 def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
     # Get data
     output = data[n][k]
-    images, labels= (output['images'], output['labels'])
+    images, labels = (output['images'], output['labels'])
 
     # Split test and train
     n_test = int(sum(nsample)*0.2)
@@ -36,7 +34,7 @@ def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
     indx_s = np.where(labels==1)
     indx_c = np.where(labels==0)        
     
-    outputs=[]
+    outputs = []
     for i in range(nscenarios):
 
         # Get extra feature
@@ -72,31 +70,47 @@ def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
         # Train and test model with and without extra feature 
         for j in range(len(X_test_list)):
 
-            train_dataset = torch.utils.data.TensorDataset(X_train_list[j],
-                                                        y_train)
-            test_dataset = torch.utils.data.TensorDataset(X_test_list[j],
-                                                        y_test)
+            train_dataset = torch.utils.data.TensorDataset(
+                X_train_list[j],
+                y_train
+            )
+            test_dataset = torch.utils.data.TensorDataset(
+                X_test_list[j],
+                y_test
+                )
             
             # Create data loader and turn datasets into iterables (batches)
-            train_dataloader = DataLoader(train_dataset, 
-                                        batch_size=BATCH_SIZE, 
-                                        shuffle=True) 
+            train_dataloader = DataLoader(
+                train_dataset, 
+                batch_size=BATCH_SIZE, 
+                shuffle=True
+                ) 
 
-            test_dataloader = DataLoader(test_dataset,
-                                        batch_size=BATCH_SIZE,
-                                        shuffle=False)
+            test_dataloader = DataLoader(
+                test_dataset,
+                batch_size=BATCH_SIZE,
+                shuffle=False
+                )
 
             # Initialize model and optimizer
-            model =  model_builder.TVGG(input_shape=input_shapes[j], 
-                                        hidden_units= 10, 
-                                        output_shape=2)
+            model =  model_builder.TVGG(
+                input_shape=input_shapes[j], 
+                hidden_units=10, 
+                output_shape=2
+                )
                         
             optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1)
             
             # Train test loop
-            output = engine.train_test_loop(model,train_dataloader,
-                                            test_dataloader, optimizer, loss_fn,
-                                            EPOCHS,print_b=False)
+            output = engine.train_test_loop(
+                model=model,
+                train_dataloader=train_dataloader,
+                test_dataloader=test_dataloader,
+                optimizer=optimizer, 
+                loss_fn=loss_fn,
+                epochs=EPOCHS,
+                print_b=False
+                )
             
             acc_test = output['test_acc'][EPOCHS-1]
             ce_test = output['test_ce'][EPOCHS-1]            
@@ -105,18 +119,17 @@ def process_combination(n, nsample, k, data, size_c, size_s,nscenarios,m):
     return (n, k, m,outputs)
 
 ################################################################################
-########################### perform simulatinons ###############################
+#                             Perform simulations                              #
 ################################################################################
 
 # Define variables for the simulation
-
 # Number of replications and samples per class
 NREPS = 100
 n_samples = [[3000] * 2, [5000] * 2, [3000,5000]]
 
 # Noise and error variance
 noise_prop = [0,0.25,0.5,0.75,1]
-var_error =.15
+VAR_ERROR =.15
 
 # Parameters for extra feature
 mu_c = np.array([-2,-1,-0.5,0])
@@ -148,7 +161,11 @@ data_noisy = [[[] for _ in range(len(n_samples))] for _ in range(len(noise_prop)
 for n, n_sample in enumerate(n_samples):
     for j, noise in enumerate(noise_prop):
         for k in range(NREPS):
-            output = cs.generate_sample(n=n_sample, noise_prop=noise,var=var_error)
+            output = cs.generate_sample(
+                n=n_sample, 
+                noise_prop=noise,
+                var=VAR_ERROR
+            )
             data_noisy[j][n].append(output)
             
 # Define Loss Function
@@ -163,12 +180,19 @@ accuracy_test_noisy = np.zeros((len(n_samples),len(mu_c),len(noise_prop), 2 ,NRE
 ce_test_noisy = np.zeros((len(n_samples),len(mu_c),len(noise_prop), 2 ,NREPS))
 
 # Parallelize the loop
-outputs_noisy = Parallel(n_jobs=100)(delayed(process_combination)(n, nsample, k, 
-                               data= data_noisy[m],size_c=size_c,size_s=size_s,
-                               nscenarios=len(mu_s),m=m)
-                    for n, nsample in enumerate(n_samples)
-                    for m, noise in enumerate(noise_prop)
-                    for k in range(NREPS))
+outputs_noisy = Parallel(n_jobs=100)(
+    delayed(process_combination)(
+        n, nsample, k, 
+        data=data_noisy[m],
+        size_c=size_c,
+        size_s=size_s,
+        nscenarios=len(mu_s),
+        m=m
+    )
+    for n, nsample in enumerate(n_samples)
+    for m, noise in enumerate(noise_prop)
+    for k in range(NREPS)
+)
 
 for n, k, m, results in outputs_noisy:
     for i, j, acc, ce in results:
@@ -176,18 +200,19 @@ for n, k, m, results in outputs_noisy:
         ce_test_noisy[n,i,m,j,k]  = ce        
 
 # Save environment
-env_vars = {'n_samples' : n_samples,
-            'accuracy_test': accuracy_test_noisy,
-            'ce_test': ce_test_noisy,
-            'noise_prop': noise_prop,
-            'NREPS': NREPS,
-            'EPOCHS': EPOCHS,
-            'BATCH_SIZE': BATCH_SIZE,
-            'mu_c': mu_c,
-            'mu_s': mu_s,
-            'sigma_s': sigma_s,
-            'sigma_c': sigma_c,
-            'var_error': var_error
+env_vars = {
+    'n_samples' : n_samples,
+    'accuracy_test': accuracy_test_noisy,
+    'ce_test': ce_test_noisy,
+    'noise_prop': noise_prop,
+    'NREPS': NREPS,
+    'EPOCHS': EPOCHS,
+    'BATCH_SIZE': BATCH_SIZE,
+    'mu_c': mu_c,
+    'mu_s': mu_s,
+    'sigma_s': sigma_s,
+    'sigma_c': sigma_c,
+    'var_error': VAR_ERROR
 }       
         
 # Save variables using joblib 

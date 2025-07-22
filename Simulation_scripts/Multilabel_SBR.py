@@ -1,18 +1,11 @@
 import torch 
-import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
-import seaborn as sns
-
 from torch.utils.data import DataLoader, random_split
 
-from modular import engine
 from modular import extra_functions as ef
 from modular import model_builder
-import modular.samples_setup as cs
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 
 from torchmetrics.classification import (
     MultilabelAccuracy, 
@@ -22,11 +15,17 @@ from torchmetrics.classification import (
 )
 
 ################################################################################
-##################### classes and functions definitions ########################
+#                    Classes and functions definitions                         #
 ################################################################################
 
-def generate_multilabel_sample(n , noise_prop,seed = 999,size = 28, var = 0.15,
-                    noise_indx = False):
+
+def generate_multilabel_sample(
+    n , 
+    noise_prop,seed=999,
+    size=28, 
+    var=0.15,
+    noise_indx=False
+    ):
     
     """Generates multi-label samples.
 
@@ -54,7 +53,7 @@ def generate_multilabel_sample(n , noise_prop,seed = 999,size = 28, var = 0.15,
                     
     # Create circles
     for _ in range(n_cr):
-        radius = np.random.randint(2, size // 2)  #
+        radius = np.random.randint(2, size // 2)  
         image = ef.draw_circle(size, radius)
         dataset_circles.append(image)
      
@@ -66,31 +65,48 @@ def generate_multilabel_sample(n , noise_prop,seed = 999,size = 28, var = 0.15,
         
     # Create triangles
     for _ in range(n_tr):
-        len_size = np.random.randint(2, size )  
+        len_size = np.random.randint(2, size)  
         image = ef.draw_triangle(size, len_size)
         dataset_triangles.append(image)
                         
     ## Add noise to some of them
     np.random.seed(seed)
      
-    # circles      
-    noisy_indices_c = np.random.choice(n_cr, int(n_cr * noise_prop), replace=False)
+    # Circles      
+    noisy_indices_c = np.random.choice(
+        n_cr, 
+        int(n_cr * noise_prop), 
+        replace=False
+        )
+    
     for i in noisy_indices_c: 
         dataset_circles[i] = ef.add_gaussian_noise(dataset_circles[i],var=var)
         
-    # squares
-    noisy_indices_s = np.random.choice(n_sq, int(n_sq * noise_prop), replace=False)
+    # Squares
+    noisy_indices_s = np.random.choice(
+        n_sq, 
+        int(n_sq * noise_prop),
+        replace=False
+        )
+    
     for i in noisy_indices_s:
         dataset_squares[i] = ef.add_gaussian_noise(dataset_squares[i],var=var)
         
-    # triangles
-    noisy_indices_is = np.random.choice(n_tr, int(n_tr * noise_prop), replace=False)
+    # Triangles
+    noisy_indices_is = np.random.choice(
+        n_tr,
+        int(n_tr * noise_prop), 
+        replace=False
+        )
+    
     for i in noisy_indices_is:
         dataset_triangles[i] = ef.add_gaussian_noise(dataset_triangles[i],var=var)
         
     # Crete dictionary 
-    class_to_indx = dict(zip(['circles','squares','triangles','curved','Polygons'],
-                             [0,1,2,3,4,5]))
+    class_to_indx = dict(
+        zip(['circles','squares','triangles','curved','Polygons'],
+        [0,1,2,3,4,5])
+        )
     
     # Create labels
     size = (ntot,5)
@@ -100,8 +116,12 @@ def generate_multilabel_sample(n , noise_prop,seed = 999,size = 28, var = 0.15,
     labels[(n_cr+n_sq):(n_cr+n_sq)+n_tr,(2,4)] = 1
     
     # # Combine datasets
-    all_images = np.concatenate((dataset_circles , dataset_squares,
-                                 dataset_triangles))
+    all_images = np.concatenate(
+        (dataset_circles ,
+         dataset_squares,
+        dataset_triangles)
+        )
+
     # Covert to three channels
     all_images_3c = []
     for i in range(len(all_images)):
@@ -113,11 +133,12 @@ def generate_multilabel_sample(n , noise_prop,seed = 999,size = 28, var = 0.15,
     np.random.shuffle(indices)
     all_images_3c = [all_images_3c[i] for i in indices]
     labels = labels[indices]
+    
     output = {
         "images": all_images_3c,
         "labels": labels,
         "class_to_indx": class_to_indx
-            }    
+        }    
     
     return output
 
@@ -129,8 +150,7 @@ class MultilabelDataSet(Dataset):
         
     def __len__(self):
         return len(self.images)
-    
-    
+        
     def __getitem__(self, idx):
         # Load image
         image = self.images[idx]
@@ -145,6 +165,7 @@ class MultilabelDataSet(Dataset):
         return image, label
     
 def reg_loss(y_hat, coef_lambda=None):
+    
     """
     Implements the semantic rule:
     TRIANGLE(x) ⇒ ¬ CURVED(x)
@@ -174,17 +195,27 @@ def reg_loss(y_hat, coef_lambda=None):
     violation2 = torch.mean(squares * curved)
     violation3 = torch.mean(triangles * curved)
 
-    reg_term = (coef_lambda[0]*violation1 + 
-                coef_lambda[1]*violation2 +
-                coef_lambda[2]*violation3 )  
+    reg_term = (
+        coef_lambda[0]*violation1 + 
+        coef_lambda[1]*violation2 +
+        coef_lambda[2]*violation3 
+        )  
 
     return reg_term
 
 
-def train_val_loop(EPOCHS,model,train_dataloader,
-                   val_dataloader, device,
-                   optimizer,reg_fn,alpha,coef_lambda = [1,1,1],
-                   verbose = False):
+def train_val_loop(
+    EPOCHS,
+    model,
+    train_dataloader,
+    val_dataloader, 
+    device,
+    optimizer,
+    reg_fn,
+    alpha,
+    coef_lambda = [1,1,1],
+    verbose = False
+    ):
     
     """Trains and validates a PyTorch model including regularization function.
 
@@ -236,13 +267,15 @@ def train_val_loop(EPOCHS,model,train_dataloader,
                 y = y.to(device,dtype = torch.float)
                 y_hat = model(X)
                 error = nn.BCEWithLogitsLoss()
-                loss = torch.sum(error(y_hat,y)) + alpha * reg_loss(y_hat,coef_lambda)
+                loss = (
+                    torch.sum(error(y_hat,y)) + 
+                    alpha * reg_loss(y_hat,coef_lambda)
+                )
                 val_losses.append(loss.item())
         epoch_val_loss.append(np.mean(val_losses))
         
         if verbose:
             if epoch%10==0:
-
                 print(
                     'Train Epoch: {}\t Train Loss: {:.6f}\t Val Loss: {:.6f}'.format(
                         epoch+1,
@@ -277,7 +310,6 @@ def get_predictions(model,image):
      
     return preds, probs
 
-
 def test_loop(model,dataloader):
     
     """Generate predictions for samples in the test Dataloader from a trained 
@@ -309,7 +341,7 @@ def test_loop(model,dataloader):
     return real_labels, pred_labels, probs_labels    
 
 ################################################################################
-########################### perform simulatinons ###############################
+#                              Perform simulations                             #
 ################################################################################
 
 print('Running')
@@ -331,10 +363,12 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 # Generate sample
-nsamples = [[1000] * 3,
-           [500, 1000, 1500],
-           [2500] * 3,
-           [500,1500,2000]]
+nsamples = [
+    [1000] * 3,
+    [500, 1000, 1500],
+    [2500] * 3,
+    [500,1500,2000]
+]
 alphas = [0,0.05,0.07,0.1,0.15]
 
 # Start empty lists to save results 
@@ -385,47 +419,47 @@ for ns_indx, n_sample in enumerate(nsamples):
             # 4. Generate dataloaders
             train_dataloader = DataLoader(
                 train_dataset, 
-                batch_size = BATCH_SIZE,
-                shuffle = True
+                batch_size=BATCH_SIZE,
+                shuffle=True
             )
 
             val_dataloader = DataLoader(
                 val_dataset, 
-                batch_size = BATCH_SIZE,
-                shuffle = False
+                batch_size=BATCH_SIZE,
+                shuffle=False
             )
 
             test_dataloader = DataLoader(
                 test_dataset, 
-                batch_size = BATCH_SIZE,
-                shuffle = False
+                batch_size=BATCH_SIZE,
+                shuffle=False
             )
             
             # 5. Initialize model and optimer 
             model = model_builder.TVGG(
-                    input_shape = 3,  
-                    hidden_units= 10, 
-                    output_shape = 5
+                    input_shape=3,  
+                    hidden_units=10, 
+                    output_shape=5
                 )   
-            optimizer = torch.optim.Adam(params = model.parameters(), lr=0.001)
+            optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001)
             
             # 6. Train model
             train_loss, val_loss = train_val_loop(
-                EPOCHS = EPOCHS, 
-                model = model, 
-                train_dataloader = train_dataloader,
-                val_dataloader = val_dataloader, 
-                device = device,
-                optimizer = optimizer,
-                reg_fn = reg_loss,
-                alpha = a_val,
-                coef_lambda = [1,.85,.2]
+                EPOCHS=EPOCHS, 
+                model=model, 
+                train_dataloader=train_dataloader,
+                val_dataloader=val_dataloader, 
+                device=device,
+                optimizer=optimizer,
+                reg_fn=reg_loss,
+                alpha=a_val,
+                coef_lambda=[1,.85,.2]
             )
             
             # 7. Inference
             real_labels, pred_labels, probs_labels = test_loop(
-                model = model,
-                dataloader = test_dataloader
+                model=model,
+                dataloader=test_dataloader
             )
                             
             all_probs = torch.cat(probs_labels, dim=0)  
@@ -455,35 +489,33 @@ for ns_indx, n_sample in enumerate(nsamples):
             )
 
 ################################################################################
-################################ Save results ##################################
+#                                Save results                                  #
 ################################################################################    
 
-# Save environment
-
-env_vars = {'nsamples' : nsamples,
-            'alphas': alphas_list,
-            'accuracy': accuracy_list,
-            'recall': recall_list,
-            'precision': precision_list,
-            'f1': f1_list,
-            'nrep_list': nrep_list,
-            'nsamples_list': n_samples_list,
-            'pol_circ': pol_circ,
-            'cur_sqr': cur_sqr,
-            'cur_tri': cur_tri,             
-            'EPOCHS': EPOCHS,
-            'BATCH_SIZE': BATCH_SIZE,
-            'NOISE_PROP': NOISE_PROP,
-            'VAR_NOISE': VAR
-            }
+env_vars = {
+    'nsamples' : nsamples,
+    'alphas': alphas_list,
+    'accuracy': accuracy_list,
+    'recall': recall_list,
+    'precision': precision_list,
+    'f1': f1_list,
+    'nrep_list': nrep_list,
+    'nsamples_list': n_samples_list,
+    'pol_circ': pol_circ,
+    'cur_sqr': cur_sqr,
+    'cur_tri': cur_tri,             
+    'EPOCHS': EPOCHS,
+    'BATCH_SIZE': BATCH_SIZE,
+    'NOISE_PROP': NOISE_PROP,
+    'VAR_NOISE': VAR
+    }
 
 # Save variables using joblib 
-where_to_save = ('/home/sofiruiz/InformedMlCv/Environments/'
-                 'SBR_Multilabel.pkl')
+where_to_save = (
+    '/home/sofiruiz/InformedMlCv/Environments/'
+    'SBR_Multilabel.pkl'
+)
 torch.save(env_vars, where_to_save)
 
-print('done!')
-
-
-    
+print('Done!')  
     

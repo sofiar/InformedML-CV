@@ -1,12 +1,10 @@
 """
 Contains extra functions to simulate data and save models.
 """
-from pathlib import Path
 import numpy as np
 import cv2
-import torch
 
-
+# Function to initialize blank image
 def create_blank_image(height:float, width:float):
     """Create a blank image.
 
@@ -22,7 +20,7 @@ def create_blank_image(height:float, width:float):
 
 # Function to draw a circle on a binary image
 def draw_circle(image_size, radius):
-    """draw circle.
+    """Draw circle.
 
     Simulate circle images
 
@@ -43,13 +41,19 @@ def draw_circle(image_size, radius):
     center = (image_size // 2, image_size // 2)
     angle = np.random.uniform(0, 180)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated_image = cv2.warpAffine(image, M, (image_size, image_size), 
-                                   flags=cv2.INTER_CUBIC)
+    
+    rotated_image = cv2.warpAffine(
+        image, 
+        M, 
+        (image_size, image_size), 
+        flags=cv2.INTER_CUBIC
+        )
+    
     return rotated_image
     
 # Function to draw a square on a binary image
 def draw_square(image_size, square_size):
-    """draw square.
+    """Draw square.
 
     Simulate square images
 
@@ -63,23 +67,35 @@ def draw_square(image_size, square_size):
     
   """
     image = create_blank_image(image_size, image_size)
-    top_left = (image_size // 2 - square_size // 2, 
-                image_size // 2 - square_size // 2)
-    bottom_right = (image_size // 2 + square_size // 2, 
-                    image_size // 2 + square_size // 2)
+    top_left = (
+        image_size // 2 - square_size // 2, 
+        image_size // 2 - square_size // 2
+        )
+    
+    bottom_right = (
+        image_size // 2 + square_size // 2, 
+        image_size // 2 + square_size // 2
+        )
+    
     cv2.rectangle(image, top_left, bottom_right,(1),-1)  
       
     ## Add rotation
     center = (image_size // 2, image_size // 2)
     angle =np.random.uniform(0, 180)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated_image = cv2.warpAffine(image, M, (image_size, image_size), 
-                                   flags=cv2.INTER_CUBIC)
+    
+    rotated_image = cv2.warpAffine(
+        image,
+        M, 
+        (image_size, image_size), 
+        flags=cv2.INTER_CUBIC
+        )
+    
     return rotated_image
   
 # Function to draw a triangle on a binary image
 def draw_triangle(image_size, triangle_size):
-    """draw triangle.
+    """Draw triangle.
 
     Simulate triangle images
 
@@ -96,21 +112,32 @@ def draw_triangle(image_size, triangle_size):
     
    # Calculate the vertices for a centered triangle
     center_x, center_y = image_size // 2, image_size // 2
-    vertices = np.array([[
+    
+    vertices = np.array(
+        [[
         (center_x, center_y - triangle_size // 2),  # Top vertex
         (center_x - triangle_size // 2, center_y + triangle_size // 2),  # Bottom-left
         (center_x + triangle_size // 2, center_y + triangle_size // 2)  # Bottom-right
-    ]], dtype=np.int32)
+        ]],
+        dtype=np.int32
+    )
     cv2.fillPoly(image, vertices,1)
     
     ## Add rotation
     center = (image_size // 2, image_size // 2)
     angle =np.random.uniform(0, 180)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated_image = cv2.warpAffine(image, M, (image_size, image_size), 
-                                   flags=cv2.INTER_CUBIC)
+    
+    rotated_image = cv2.warpAffine(
+        image, 
+        M,
+        (image_size, image_size), 
+        flags=cv2.INTER_CUBIC
+        )
+    
     return rotated_image  
   
+# Function to add Gaussian noise
 def add_gaussian_noise(image, mean=0, var=0.15):
     """Add Gaussian noise to image.
 
@@ -125,5 +152,6 @@ def add_gaussian_noise(image, mean=0, var=0.15):
     gaussian = np.random.normal(mean, sigma, (row, col))
     noisy_image = image + gaussian
     noisy_image = np.clip(noisy_image, 0, 1)  # Ensure values remain within 0-1
+    
     return noisy_image
 

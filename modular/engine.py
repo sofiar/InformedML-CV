@@ -2,14 +2,24 @@
 """
 Contains functions and classes for training, testing and saving a PyTorch model.
 """
+
 from typing import Dict, List, Tuple
 import torch
 import torch.nn.functional as F
 from pathlib import Path
-import numpy as np
 
-# Early stopping class
+
+################################################################################
+#                       Generic functions and classes                          #
+################################################################################
+
 class EarlyStopping:
+
+    """ Args: 
+        patience(int): Number of epochs to wait before stopping if no improvement.
+        delta(float) : Minimum change in the monitored quantity to qualify as an improvement.
+    """ 
+
     def __init__(self, patience=5, delta=0):
         self.patience = patience
         self.delta = delta
@@ -17,12 +27,6 @@ class EarlyStopping:
         self.early_stop = False
         self.counter = 0
         self.best_model_state = None
-        
-    """ Args: 
-        delta(float) : Minimum change in the monitored quantity to qualify as an improvement.
-        patience(int): Number of epochs to wait before stopping if no improvement.
-        
-     """    
 
     def __call__(self, val_loss, model):
         score = -val_loss
@@ -37,13 +41,13 @@ class EarlyStopping:
         else:
             self.best_score = score
             self.best_model_state = model.state_dict()
-            self.counter = 0
-            
+            self.counter = 0         
      
 
-# Calculate accuracy (a classification metric)
 def accuracy_fn(y_true, y_pred):
+    
     """ Defines accuracy measure as the percentage of samples well classified"""
+    
     correct = torch.eq(y_true, y_pred).sum().item()
     acc = (correct / len(y_pred)) * 100
     return acc
@@ -53,14 +57,15 @@ def cross_entropy_fn(y_true,y_preds):
     
     device = y_true.device  # Get the device of y_true (CPU or GPU)
        
-    y_true = torch.nn.functional.one_hot(
-        y_true, num_classes = y_preds.shape[1]
+    y_true = F.one_hot(
+        y_true, 
+        num_classes=y_preds.shape[1]
         ).float().to(device)
     
     # Clip predictions to avoid log(0)
     y_preds = torch.clamp(
         y_preds, 
-        min = torch.finfo(torch.float32).eps, 
+        min=torch.finfo(torch.float32).eps, 
         max=1 - torch.finfo(torch.float32).eps
     )
 
@@ -81,11 +86,14 @@ def cross_entropy_fn(y_true,y_preds):
     # return np.mean(ce)
 
 
-def train_step(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader,
-               loss_fn: torch.nn.Module,
-               optimizer: torch.optim.Optimizer,
-               device: torch.device = None)-> Tuple[float, float]:
+def train_step(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    loss_fn: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device = None
+    )-> Tuple[float, float]:
+    
     """Trains a PyTorch model for 1 epoch.
 
     Turns a target PyTorch model to training mode and then
@@ -128,8 +136,10 @@ def train_step(model: torch.nn.Module,
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
         train_acc += (y_pred_class == y).sum().item()/len(y_pred)
         # Calculate Cross entropy
-        train_ce += cross_entropy_fn(y_true=y,
-                                     y_preds=y_pred) 
+        train_ce += cross_entropy_fn(
+            y_true=y,
+            y_preds=y_pred
+        ) 
         
         # train_ce += cross_entropy_fn(y_true=y.detach().numpy(),
         #                              y_preds=y_pred.detach().numpy()) 
@@ -141,10 +151,12 @@ def train_step(model: torch.nn.Module,
     return train_loss, train_acc, train_ce
 
 
-def test_step(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader, 
-               loss_fn: torch.nn.Module,
-               device: torch.device = None)-> Tuple[float, float]:
+def test_step(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader, 
+    loss_fn: torch.nn.Module,
+    device: torch.device=None
+    )-> Tuple[float, float]:
    
     """Test a PyTorch model for 1 epoch.
 
@@ -185,23 +197,24 @@ def test_step(model: torch.nn.Module,
         # Divide total test loss by length of test dataloader (per batch)
         test_loss /= len(dataloader)
         test_acc /= len(dataloader)
-        test_ce /= len(dataloader)
-        
+        test_ce /= len(dataloader)        
         
     return test_loss, test_acc, test_ce
      
      
-def train_test_loop(model: torch.nn.Module, 
-          train_dataloader: torch.utils.data.DataLoader, 
-          test_dataloader: torch.utils.data.DataLoader, 
-          optimizer: torch.optim.Optimizer,
-          loss_fn: torch.nn.Module,
-          epochs: int,
-          print_b: bool = True,
-          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
-          early_stopping: EarlyStopping = None,
-          device: torch.device = None
-          ) -> Dict[str, List]:   
+def train_test_loop(
+    model: torch.nn.Module, 
+    train_dataloader: torch.utils.data.DataLoader, 
+    test_dataloader: torch.utils.data.DataLoader, 
+    optimizer: torch.optim.Optimizer,
+    loss_fn: torch.nn.Module,
+    epochs: int,
+    print_b: bool = True,
+    Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+    early_stopping: EarlyStopping = None,
+    device: torch.device = None
+    ) -> Dict[str, List]:   
+    
     """ Train test loop by epochs.
 
     Conduct train test loop 
@@ -222,29 +235,36 @@ def train_test_loop(model: torch.nn.Module,
         In the form (train_loss, train_accuracy,test_loss, test_accuracy)
     
   """
-    results = {"train_loss": [],
-               "train_acc": [],
-               "train_ce": [],
-               "test_loss": [],
-               "test_acc": [],
-               "test_ce": []}
+    results = {
+        "train_loss": [],
+        "train_acc": [],
+        "train_ce": [],
+        "test_loss": [],
+        "test_acc": [],
+        "test_ce": []
+        }
                     
     for epoch in range(epochs):
-        train_loss, train_acc, train_ce = train_step(model=model,
-                                           dataloader=train_dataloader,
-                                           loss_fn=loss_fn,
-                                           optimizer=optimizer,
-                                           device = device)
+        train_loss, train_acc, train_ce = train_step(
+            model=model,
+            dataloader=train_dataloader,
+            loss_fn=loss_fn,
+            optimizer=optimizer,
+            device = device
+            )
         
-        test_loss, test_acc, test_ce = test_step(model=model, dataloader=test_dataloader,
-                                        loss_fn=loss_fn,device=device)
+        test_loss, test_acc, test_ce = test_step(
+            model=model, 
+            dataloader=test_dataloader,
+            loss_fn=loss_fn,
+            device=device
+            )
         
         if early_stopping is not None:
             early_stopping(test_loss, model)
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
-
         
         # Adjust learning rate
         if Scheduler is not None:
@@ -265,14 +285,16 @@ def train_test_loop(model: torch.nn.Module,
         results["test_loss"].append(test_loss)
         results["test_acc"].append(test_acc)
         results["test_ce"].append(test_ce)
-        
-        
+                
     return results
 
 
-def save_model(model:torch.nn.Module,
-               target_dir: str,
-               model_name: str):
+def save_model(
+    model:torch.nn.Module,
+    target_dir: str,
+    model_name: str
+    ):
+    
   """Saves a PyTorch model to a target directory.
   Args:
     model: A target PyTorch model to save.
@@ -283,8 +305,7 @@ def save_model(model:torch.nn.Module,
   """
   # Create target directory
   target_dir_path = Path(target_dir)
-  target_dir_path.mkdir(parents=True,
-                        exist_ok=True)
+  target_dir_path.mkdir(parents=True,exist_ok=True)
 
   # Create model save path
   assert model_name.endswith(".pth") or model_name.endswith(".pt") 
@@ -294,19 +315,27 @@ def save_model(model:torch.nn.Module,
   print(f"[INFO] Saving model to: {model_save_path}")
   torch.save(obj=model.state_dict(),f=model_save_path)
   
-## For dealing with Soft Labals
   
+################################################################################
+#                       Soft-labels functions and classes                      #
+################################################################################
+
+
 def soft_cross_entropy(logits, soft_targets):
+    
      # Convert logits to log-probabilities
     log_probs = F.log_softmax(logits, dim=1) 
     # Compute soft cross-entropy
     loss = -torch.sum(soft_targets * log_probs, dim=1).mean()  
     return loss
 
-def train_soft_step(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader,
-               optimizer: torch.optim.Optimizer,
-               device: torch.device = None)-> Tuple[float, float]:
+def train_soft_step(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device = None
+    )-> Tuple[float, float]:
+    
     """Trains a PyTorch model for 1 epoch.
 
     Turns a target PyTorch model to training mode and then
@@ -346,16 +375,19 @@ def train_soft_step(model: torch.nn.Module,
         
         # Get accuracy 
         probabilities = torch.softmax(logits, dim=1)
-        correct_predictions = (probabilities >= 0.5) * soft_label  # Match high probabilities to soft labels
+        # Match high probabilities to soft labels
+        correct_predictions = (probabilities >= 0.5) * soft_label  
  
     train_acc = correct_predictions.sum() / soft_label.sum()  
     train_loss = train_loss / len(dataloader)
 
     return train_loss, train_acc
 
-def test_soft_step(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader, 
-               device: torch.device = None)-> Tuple[float, float]:
+def test_soft_step(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader, 
+    device: torch.device = None
+    )-> Tuple[float, float]:
    
     """Test a PyTorch model for 1 epoch.
 
@@ -399,16 +431,17 @@ def test_soft_step(model: torch.nn.Module,
     return test_loss, test_acc
 
 
-def train_test_soft_loop(model: torch.nn.Module, 
-          train_dataloader: torch.utils.data.DataLoader, 
-          test_dataloader: torch.utils.data.DataLoader, 
-          optimizer: torch.optim.Optimizer,
-          epochs: int,
-          print_b: bool = True,
-          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
-          early_stopping: EarlyStopping = None,
-          device: torch.device = None
-          ) -> Dict[str, List]:   
+def train_test_soft_loop(
+    model: torch.nn.Module, 
+    train_dataloader: torch.utils.data.DataLoader, 
+    test_dataloader: torch.utils.data.DataLoader, 
+    optimizer: torch.optim.Optimizer,
+    epochs: int,
+    print_b: bool = True,
+    Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+    early_stopping: EarlyStopping = None,
+    device: torch.device = None
+    ) -> Dict[str, List]:   
     """ Train test loop by epochs.
 
     Conduct train test loop 
@@ -429,20 +462,26 @@ def train_test_soft_loop(model: torch.nn.Module,
         In the form (train_loss, train_accuracy,test_loss, test_accuracy)
     
   """
-    results = {"train_loss": [],
-               "train_acc": [],
-               "test_loss": [],
-               "test_acc": []}
+    results = {
+        "train_loss": [],
+        "train_acc": [],
+        "test_loss": [],
+        "test_acc": []
+        }
                     
     for epoch in range(epochs):
-        train_loss, train_acc = train_soft_step(model=model,
-                                           dataloader=train_dataloader,
-                                           optimizer=optimizer,
-                                           device = device)
+        train_loss, train_acc = train_soft_step(
+            model=model,
+            dataloader=train_dataloader,
+            optimizer=optimizer,
+            device = device
+            )
         
-        test_loss, test_acc = test_soft_step(model= model, 
-                                             dataloader=test_dataloader,
-                                             device=device)
+        test_loss, test_acc = test_soft_step(
+            model= model, 
+            dataloader=test_dataloader,
+            device=device
+            )
         
         if early_stopping is not None:
             early_stopping(test_loss, model)
@@ -465,20 +504,26 @@ def train_test_soft_loop(model: torch.nn.Module,
         results["train_loss"].append(train_loss)
         results["train_acc"].append(train_acc)
         results["test_loss"].append(test_loss)
-        results["test_acc"].append(test_acc)
-        
+        results["test_acc"].append(test_acc)        
         
     return results
 
+
+################################################################################
+#               Regularization approach: functions and classes                 #
+################################################################################
+
   
-def train_step_reg(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader,
-               loss_fn: torch.nn.Module,
-               reg_fn,
-               optimizer: torch.optim.Optimizer,
-               alpha: float,
-               device: torch.device = None,
-               coef_lambda = None)-> Tuple[float, float]:
+def train_step_reg(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    loss_fn: torch.nn.Module,
+    reg_fn,
+    optimizer: torch.optim.Optimizer,
+    alpha: float,
+    device: torch.device = None,
+    coef_lambda = None
+    )-> Tuple[float, float]:
     
     """Trains a PyTorch model with hierarchical labels including 
     a regularization term in the loss fuction for 1 epoch.
@@ -500,9 +545,7 @@ def train_step_reg(model: torch.nn.Module,
         In the form (train_loss, train_accuracy)
     
   """
-
-  
-  #############################################################################
+ 
     model.to(device)
 
     model.train()
@@ -516,9 +559,9 @@ def train_step_reg(model: torch.nn.Module,
         
         # add regularization term
         sbr_loss = reg_fn(
-            logits_main = y_predmain,
-            true_sublabels = y_sub,
-            coef_lambda = coef_lambda
+            logits_main=y_predmain,
+            true_sublabels=y_sub,
+            coef_lambda=coef_lambda
         )
         
         loss = base_loss + alpha * sbr_loss
@@ -545,16 +588,19 @@ def train_step_reg(model: torch.nn.Module,
     train_loss = train_loss / len(dataloader)
     train_acc = train_acc / len(dataloader)
     train_ce = train_ce/ len(dataloader)
+    
     return train_loss, train_acc, train_ce
 
 
-def test_step_reg(model: torch.nn.Module,
-               dataloader: torch.utils.data.DataLoader, 
-               loss_fn: torch.nn.Module,
-               reg_fn,
-               alpha: float,
-               device: torch.device = None,
-               coef_lambda = None)-> Tuple[float, float]:
+def test_step_reg(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader, 
+    loss_fn: torch.nn.Module,
+    reg_fn,
+    alpha: float,
+    device: torch.device = None,
+    coef_lambda = None
+    )-> Tuple[float, float]:
    
     """Test a PyTorch model for 1 epoch.
 
@@ -612,22 +658,23 @@ def test_step_reg(model: torch.nn.Module,
         test_loss /= len(dataloader)
         test_acc /= len(dataloader)
         test_ce /= len(dataloader)
-        
-        
+                
     return test_loss, test_acc, test_ce
 
-def train_test_loop_reg(model: torch.nn.Module, 
-          train_dataloader: torch.utils.data.DataLoader, 
-          test_dataloader: torch.utils.data.DataLoader, 
-          optimizer: torch.optim.Optimizer,
-          loss_fn: torch.nn.Module,
-          reg_fn,
-          epochs: int,
-          print_b: True ,
-          alpha: float,
-          device: torch.device = None,
-          Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
-          coef_lambda = None) -> Dict[str, List]:   
+def train_test_loop_reg(
+    model: torch.nn.Module, 
+    train_dataloader: torch.utils.data.DataLoader, 
+    test_dataloader: torch.utils.data.DataLoader, 
+    optimizer: torch.optim.Optimizer,
+    loss_fn: torch.nn.Module,
+    reg_fn,
+    epochs: int,
+    print_b: True ,
+    alpha: float,
+    device: torch.device = None,
+    Scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+    coef_lambda = None
+    ) -> Dict[str, List]:   
     
     """ Train test loop with regularization term by epochs.
 
@@ -650,12 +697,14 @@ def train_test_loop_reg(model: torch.nn.Module,
         In the form (train_loss, train_accuracy,test_loss, test_accuracy)
     
   """
-    results = {"train_loss": [],
-               "train_acc": [],
-               "train_ce": [],
-               "test_loss": [],
-               "test_acc": [],
-               "test_ce": []}
+    results = {
+        "train_loss": [],
+        "train_acc": [],
+        "train_ce": [],
+        "test_loss": [],
+        "test_acc": [],
+        "test_ce": []
+        }
                     
     for epoch in range(epochs):
         train_loss, train_acc, train_ce = train_step_reg(
